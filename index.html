@@ -92,7 +92,7 @@
                         <p class="text-xs text-gray-500 mt-1">Auto-detected. Please edit if incorrect.</p>
                     </div>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <label for="output-language" class="font-semibold text-gray-300 mb-2 block">Output Language</label>
                             <select id="output-language" class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200">
@@ -105,6 +105,12 @@
                                 <option value="srt" selected>SRT (SubRip)</option>
                                 <option value="vtt">WebVTT</option>
                                 <option value="txt">Plain Text</option>
+                            </select>
+                        </div>
+                         <div>
+                            <label for="model-select" class="font-semibold text-gray-300 mb-2 block">Model</label>
+                            <select id="model-select" class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200">
+                                <!-- Options populated by JavaScript -->
                             </select>
                         </div>
                     </div>
@@ -127,9 +133,9 @@
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    <button id="cancel-btn" class="bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center hidden">
-                        <i class="fa-solid fa-times text-xs"></i>
-                    </button>
+                </button>
+                <button id="cancel-btn" class="bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg px-4 hidden items-center justify-center transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-red-500/50">
+                    <i class="fa-solid fa-times"></i>
                 </button>
                 <button id="preview-btn" class="bg-gray-600 text-gray-200 font-semibold px-4 py-3 rounded-lg hover:bg-gray-500 focus:outline-none focus:ring-4 focus:ring-gray-500/50 transition-all duration-200">
                     <i class="fa-solid fa-play w-4"></i>
@@ -218,6 +224,7 @@
         const videoDurationInput = document.getElementById('video-duration');
         const outputLanguageSelect = document.getElementById('output-language');
         const outputFormatSelect = document.getElementById('output-format');
+        const modelSelect = document.getElementById('model-select');
         const generateBtn = document.getElementById('generate-btn');
         const previewBtn = document.getElementById('preview-btn');
         const btnText = document.getElementById('btn-text');
@@ -253,12 +260,14 @@
         let isYTAPILoaded = false;
 
         const LANGUAGES = [ { value: "auto", text: "Original Video Language" }, { value: "Afrikaans", text: "Afrikaans" }, { value: "Albanian", text: "Albanian" }, { value: "Amharic", text: "Amharic" }, { value: "Arabic", text: "Arabic" }, { value: "Armenian", text: "Armenian" }, { value: "Assamese", text: "Assamese" }, { value: "Aymara", text: "Aymara" }, { value: "Azerbaijani", text: "Azerbaijani" }, { value: "Bambara", text: "Bambara" }, { value: "Basque", text: "Basque" }, { value: "Belarusian", text: "Belarusian" }, { value: "Bengali", text: "Bengali" }, { value: "Bhojpuri", text: "Bhojpuri" }, { value: "Bosnian", text: "Bosnian" }, { value: "Bulgarian", text: "Bulgarian" }, { value: "Catalan", text: "Catalan" }, { value: "Cebuano", text: "Cebuano" }, { value: "Chichewa", text: "Chichewa (Nyanja)" }, { value: "Chinese (Simplified)", text: "Chinese (Simplified)" }, { value: "Chinese (Traditional)", text: "Chinese (Traditional)" }, { value: "Corsican", text: "Corsican" }, { value: "Croatian", text: "Croatian" }, { value: "Czech", text: "Czech" }, { value: "Danish", text: "Danish" }, { value: "Dhivehi", text: "Dhivehi" }, { value: "Dogri", text: "Dogri" }, { value: "Dutch", text: "Dutch" }, { value: "English", text: "English" }, { value: "Esperanto", text: "Esperanto" }, { value: "Estonian", text: "Estonian" }, { value: "Ewe", text: "Ewe" }, { value: "Filipino", text: "Filipino (Tagalog)" }, { value: "Finnish", text: "Finnish" }, { value: "French", text: "French" }, { value: "Frisian", text: "Frisian" }, { value: "Galician", text: "Galician" }, { value: "Georgian", text: "Georgian" }, { value: "German", text: "German" }, { value: "Greek", text: "Greek" }, { value: "Guarani", text: "Guarani" }, { value: "Gujarati", text: "Gujarati" }, { value: "Haitian Creole", text: "Haitian Creole" }, { value: "Hausa", text: "Hausa" }, { value: "Hawaiian", text: "Hawaiian" }, { value: "Hebrew", text: "Hebrew" }, { value: "Hindi", text: "Hindi" }, { value: "Hmong", text: "Hmong" }, { value: "Hungarian", text: "Hungarian" }, { value: "Icelandic", text: "Icelandic" }, { value: "Igbo", text: "Igbo" }, { value: "Ilocano", text: "Ilocano" }, { value: "Indonesian", text: "Indonesian" }, { value: "Irish", text: "Irish" }, { value: "Italian", text: "Italian" }, { value: "Japanese", text: "Japanese" }, { value: "Javanese", text: "Javanese" }, { value: "Kannada", text: "Kannada" }, { value: "Kazakh", text: "Kazakh" }, { value: "Khmer", text: "Khmer" }, { value: "Kinyarwanda", text: "Kinyarwanda" }, { value: "Konkani", text: "Konkani" }, { value: "Korean", text: "Korean" }, { value: "Krio", text: "Krio" }, { value: "Kurdish (Kurmanji)", text: "Kurdish (Kurmanji)" }, { value: "Kurdish (Sorani)", text: "Kurdish (Sorani)" }, { value: "Kyrgyz", text: "Kyrgyz" }, { value: "Lao", text: "Lao" }, { value: "Latin", text: "Latin" }, { value: "Latvian", text: "Latvian" }, { value: "Lingala", text: "Lingala" }, { value: "Lithuanian", text: "Lithuanian" }, { value: "Luganda", text: "Luganda" }, { value: "Luxembourgish", text: "Luxembourgish" }, { value: "Macedonian", text: "Macedonian" }, { value: "Maithili", text: "Maithili" }, { value: "Malagasy", text: "Malagasy" }, { value: "Malay", text: "Malay" }, { value: "Malayalam", text: "Malayalam" }, { value: "Maltese", text: "Maltese" }, { value: "Maori", text: "Maori" }, { value: "Marathi", text: "Marathi" }, { value: "Meiteilon (Manipuri)", text: "Meiteilon (Manipuri)" }, { value: "Mizo", text: "Mizo" }, { value: "Mongolian", text: "Mongolian" }, { value: "Myanmar (Burmese)", text: "Myanmar (Burmese)" }, { value: "Nepali", text: "Nepali" }, { value: "Norwegian", text: "Norwegian" }, { value: "Odia (Oriya)", text: "Odia (Oriya)" }, { value: "Oromo", text: "Oromo" }, { value: "Pashto", text: "Pashto" }, { value: "Persian", text: "Persian (Farsi)" }, { value: "Polish", text: "Polish" }, { value: "Portuguese", text: "Portuguese" }, { value: "Punjabi", text: "Punjabi" }, { value: "Quechua", text: "Quechua" }, { value: "Romanian", text: "Romanian" }, { value: "Russian", text: "Russian" }, { value: "Samoan", text: "Samoan" }, { value: "Sanskrit", text: "Sanskrit" }, { value: "Scots Gaelic", text: "Scots Gaelic" }, { value: "Sepedi", text: "Sepedi" }, { value: "Serbian", text: "Serbian" }, { value: "Sesotho", text: "Sesotho" }, { value: "Shona", text: "Shona" }, { value: "Sindhi", text: "Sindhi" }, { value: "Sinhala", text: "Sinhala" }, { value: "Slovak", text: "Slovak" }, { value: "Slovenian", text: "Slovenian" }, { value: "Somali", text: "Somali" }, { value: "Spanish", text: "Spanish" }, { value: "Sundanese", text: "Sundanese" }, { value: "Swahili", text: "Swahili" }, { value: "Swedish", text: "Swedish" }, { value: "Tajik", text: "Tajik" }, { value: "Tamil", text: "Tamil" }, { value: "Tatar", text: "Tatar" }, { value: "Telugu", text: "Telugu" }, { value: "Thai", text: "Thai" }, { value: "Tigrinya", text: "Tigrinya" }, { value: "Tsonga", text: "Tsonga" }, { value: "Turkish", text: "Turkish" }, { value: "Turkmen", text: "Turkmen" }, { value: "Twi", text: "Twi (Akan)" }, { value: "Ukrainian", text: "Ukrainian" }, { value: "Urdu", text: "Urdu" }, { value: "Uyghur", text: "Uyghur" }, { value: "Uzbek", text: "Uzbek" }, { value: "Vietnamese", text: "Vietnamese" }, { value: "Welsh", text: "Welsh" }, { value: "Xhosa", text: "Xhosa" }, { value: "Yiddish", text: "Yiddish" }, { value: "Yoruba", text: "Yoruba" }, { value: "Zulu", text: "Zulu" }];
+        const MODELS = ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash', 'gemini-2.0-flash-lite'];
         
         function onYouTubeIframeAPIReady() { isYTAPILoaded = true; }
         
         document.addEventListener('DOMContentLoaded', () => {
             setupEventListeners();
             populateLanguages();
+            populateModels();
             loadApiKey();
         });
         
@@ -270,6 +279,16 @@
                 outputLanguageSelect.appendChild(option);
             });
             outputLanguageSelect.value = 'English'; // Default to English
+        }
+
+        function populateModels() {
+            MODELS.forEach(model => {
+                const option = document.createElement('option');
+                option.value = model;
+                option.textContent = model;
+                modelSelect.appendChild(option);
+            });
+            modelSelect.value = 'gemini-2.5-flash'; // Set a default
         }
 
         function setupEventListeners() {
@@ -515,7 +534,8 @@
             showProgress(0, 'Initializing...');
             showStatus('Sending request to Gemini API...', 'info');
             
-            const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?key=${apiKey}`;
+            const selectedModel = modelSelect.value;
+            const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:streamGenerateContent?key=${apiKey}`;
             const Type = { STRING: 'STRING', ARRAY: 'ARRAY', OBJECT: 'OBJECT' };
             const responseSchema = {
                 type: Type.ARRAY, items: { type: Type.OBJECT,
@@ -617,6 +637,7 @@ Strict rules:
             btnText.textContent = isLoading ? 'Generating...' : 'Generate Subtitles';
             spinner.classList.toggle('hidden', !isLoading);
             cancelBtn.classList.toggle('hidden', !isLoading);
+            cancelBtn.classList.toggle('flex', isLoading);
         }
         
         function resetUI() {
