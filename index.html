@@ -9,6 +9,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Mono&display=swap" rel="stylesheet">
+    
     <style>
         body {
             -webkit-font-smoothing: antialiased;
@@ -23,6 +27,9 @@
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
+        }
+        #subtitle-output {
+            font-family: 'Noto Sans Mono', monospace;
         }
         /* Custom scrollbar for webkit browsers */
         textarea::-webkit-scrollbar {
@@ -171,7 +178,7 @@
                     </div>
                     
                     <div class="relative">
-                        <textarea id="subtitle-output" rows="15" readonly class="w-full p-4 border border-gray-600 bg-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none font-mono text-sm text-gray-200 transition-colors"></textarea>
+                        <textarea id="subtitle-output" rows="15" readonly dir="auto" class="w-full p-4 border border-gray-600 bg-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none font-mono text-sm text-gray-200 transition-colors"></textarea>
                         <button id="copy-btn" title="Copy to Clipboard" class="absolute top-3 right-3 bg-gray-700 text-gray-300 px-3 py-1 rounded-md text-xs font-semibold hover:bg-gray-600 transition-colors">
                             <i class="fa-regular fa-copy"></i> Copy
                         </button>
@@ -535,7 +542,7 @@
             showStatus('Sending request to Gemini API...', 'info');
             
             const selectedModel = modelSelect.value;
-            const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:streamGenerateContent?key=${apiKey}`;
+            const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:streamGenerateContent?alt=sse&key=${apiKey}`;
             const Type = { STRING: 'STRING', ARRAY: 'ARRAY', OBJECT: 'OBJECT' };
             const responseSchema = {
                 type: Type.ARRAY, items: { type: Type.OBJECT,
@@ -577,28 +584,51 @@ Strict rules:
                 
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
-                let aggregatedJsonString = '';
-                
+                let buffer = '';
+                let finalSubtitleJsonString = '';
+
                 while (true) {
                     const { done, value } = await reader.read();
                     if (done) break;
-                    const chunk = decoder.decode(value, { stream: true });
-                    aggregatedJsonString += chunk.replace(/^data: /, '').trim();
-                    const progress = Math.min(90, 20 + (aggregatedJsonString.length / 100));
+
+                    buffer += decoder.decode(value, { stream: true });
+                    
+                    let lineEndIndex;
+                    while ((lineEndIndex = buffer.indexOf('\n')) >= 0) {
+                        const line = buffer.substring(0, lineEndIndex).trim();
+                        buffer = buffer.substring(lineEndIndex + 1);
+
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const jsonText = line.substring(5).trim();
+                                if (jsonText) {
+                                    const jsonChunk = JSON.parse(jsonText);
+                                    const textPart = jsonChunk?.candidates?.[0]?.content?.parts?.[0]?.text;
+                                    if (textPart) {
+                                        finalSubtitleJsonString += textPart;
+                                    }
+                                }
+                            } catch (e) {
+                                console.warn("Skipping invalid JSON chunk in stream line:", line, e);
+                            }
+                        }
+                    }
+                    const progress = Math.min(90, 20 + (finalSubtitleJsonString.length / 500));
                     showProgress(progress, 'Processing transcription...');
                 }
                 
                 try {
-                    const cleanedJson = aggregatedJsonString.replace(/^\[\s*|\s*\]$/g, '');
-                    const rawData = JSON.parse(`[${cleanedJson}]`);
+                    // At this point, finalSubtitleJsonString should be the complete JSON array string.
+                    const cleanedJsonString = finalSubtitleJsonString.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+                    const rawData = JSON.parse(cleanedJsonString);
                     const subtitleData = filterAndValidateSubtitles(rawData);
                     finalSubtitleContent = formatSubtitlesFromJSON(subtitleData, outputFormatSelect.value);
                     subtitleOutput.value = finalSubtitleContent;
                     showProgress(100, 'Complete!');
                     showStatus('Subtitle generation complete!', 'success');
                 } catch (jsonError) {
-                    showStatus(`Failed to parse response. Error: ${jsonError.message}`, 'error');
-                    subtitleOutput.value = `--- PARSING FAILED ---\n${aggregatedJsonString}`;
+                    showStatus(`Failed to parse final response. Error: ${jsonError.message}`, 'error');
+                    subtitleOutput.value = `--- PARSING FAILED ---\n${finalSubtitleJsonString}`;
                     retryBtn.classList.remove('hidden');
                 }
             } catch (error) {
