@@ -105,6 +105,9 @@
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
+                    <button id="cancel-btn" class="ml-2 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center hidden">
+                        <i class="fa-solid fa-times text-xs"></i>
+                    </button>
                 </button>
                 <button id="preview-btn" class="bg-gray-200 text-gray-700 font-semibold px-4 py-3 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors">
                     <i class="fa-solid fa-play"></i>
@@ -192,6 +195,7 @@
         const previewBtn = document.getElementById('preview-btn');
         const btnText = document.getElementById('btn-text');
         const spinner = document.getElementById('spinner');
+        const cancelBtn = document.getElementById('cancel-btn');
         const progressContainer = document.getElementById('progress-container');
         const progressBar = document.getElementById('progress-bar');
         const progressStatus = document.getElementById('progress-status');
@@ -218,17 +222,42 @@
         let finalSubtitleContent = '';
         let abortController = null;
         
-        // --- Event Listeners ---
-        generateBtn.addEventListener('click', handleGeneration);
-        copyBtn.addEventListener('click', copyToClipboard);
-        downloadBtn.addEventListener('click', downloadSubtitleFile);
-        retryBtn.addEventListener('click', handleGeneration);
-        editBtn.addEventListener('click', toggleEditMode);
-        timestampBtn.addEventListener('click', () => timestampModal.classList.remove('hidden'));
-        cancelTimestampBtn.addEventListener('click', () => timestampModal.classList.add('hidden'));
-        applyTimestampBtn.addEventListener('click', adjustTimestamps);
-        previewBtn.addEventListener('click', toggleVideoPreview);
-        urlInput.addEventListener('input', validateYouTubeUrl);
+        // --- Initialize with localStorage ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // Load API key from localStorage if available
+            const savedApiKey = localStorage.getItem('gemini_api_key');
+            if (savedApiKey) {
+                apiKeyInput.value = savedApiKey;
+            }
+            
+            // Save API key to localStorage when it changes
+            apiKeyInput.addEventListener('input', () => {
+                localStorage.setItem('gemini_api_key', apiKeyInput.value);
+            });
+            
+            // Setup event listeners
+            generateBtn.addEventListener('click', handleGeneration);
+            copyBtn.addEventListener('click', copyToClipboard);
+            downloadBtn.addEventListener('click', downloadSubtitleFile);
+            retryBtn.addEventListener('click', handleGeneration);
+            editBtn.addEventListener('click', toggleEditMode);
+            timestampBtn.addEventListener('click', () => timestampModal.classList.remove('hidden'));
+            cancelTimestampBtn.addEventListener('click', () => timestampModal.classList.add('hidden'));
+            applyTimestampBtn.addEventListener('click', adjustTimestamps);
+            previewBtn.addEventListener('click', toggleVideoPreview);
+            urlInput.addEventListener('input', validateYouTubeUrl);
+            
+            // Cancel button event listener
+            cancelBtn.addEventListener('click', () => {
+                if (abortController) {
+                    abortController.abort();
+                    toggleLoading(false);
+                    showStatus('Generation was cancelled', 'info');
+                }
+            });
+            
+            console.log("Application initialized with event listeners");
+        });
         
         // --- Functions ---
         
@@ -356,10 +385,14 @@
         
         // Main generation function
         async function handleGeneration() {
+            console.log("Generate button clicked");
+            
             const apiKey = apiKeyInput.value.trim();
             const youtubeUrl = urlInput.value.trim();
             const sourceLanguage = sourceLanguageSelect.value;
             const outputFormat = outputFormatSelect.value;
+            
+            console.log("Inputs:", { apiKey: apiKey ? "***" : "empty", youtubeUrl, sourceLanguage, outputFormat });
             
             if (!apiKey || !youtubeUrl) {
                 showStatus('Please provide both an API Key and a YouTube URL.', 'error');
@@ -406,6 +439,8 @@
                 }, ],
             };
             
+            console.log("Sending request to Gemini API");
+            
             try {
                 const response = await fetch(API_URL, {
                     method: 'POST',
@@ -414,8 +449,11 @@
                     signal: abortController.signal
                 });
                 
+                console.log("Response received:", response.status, response.statusText);
+                
                 if (!response.ok) {
                     const errorData = await response.json();
+                    console.error("API Error:", errorData);
                     throw new Error(`API request failed with status ${response.status}: ${response.statusText}. ${errorData.error?.message || ''}`);
                 }
                 
@@ -532,34 +570,11 @@
             if (isLoading) {
                 btnText.textContent = 'Generating...';
                 spinner.classList.remove('hidden');
-                generateBtn.innerHTML = `
-                    <span id="btn-text">Generating...</span>
-                    <svg id="spinner" class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <button id="cancel-btn" class="ml-2 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center">
-                        <i class="fa-solid fa-times text-xs"></i>
-                    </button>
-                `;
-                
-                // Add event listener to cancel button
-                document.getElementById('cancel-btn').addEventListener('click', () => {
-                    if (abortController) {
-                        abortController.abort();
-                        toggleLoading(false);
-                    }
-                });
+                cancelBtn.classList.remove('hidden');
             } else {
                 btnText.textContent = 'Generate Subtitles';
                 spinner.classList.add('hidden');
-                generateBtn.innerHTML = `
-                    <span id="btn-text">Generate Subtitles</span>
-                    <svg id="spinner" class="animate-spin h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                `;
+                cancelBtn.classList.add('hidden');
             }
         }
         
