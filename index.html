@@ -13,11 +13,20 @@
     
     <style>
         #generate-btn:disabled { cursor: not-allowed; opacity: 0.7; }
+        .progress-bar {
+            transition: width 0.3s ease;
+        }
+        .fade-in {
+            animation: fadeIn 0.5s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
     </style>
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen font-sans">
-
-    <div class="container mx-auto p-4 md:p-8 max-w-3xl w-full">
+    <div class="container mx-auto p-4 md:p-8 max-w-4xl w-full">
         <div class="bg-white rounded-2xl shadow-lg p-6 md:p-10">
             
             <!-- Header Section -->
@@ -25,13 +34,13 @@
                 <h1 class="text-3xl md:text-4xl font-bold text-gray-800">YouTube Subtitle Generator</h1>
                 <p class="text-gray-500 mt-2">Using the Google Gemini API</p>
             </div>
-
+            
             <!-- Security Warning -->
             <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6 rounded-r-lg" role="alert">
                 <p class="font-bold">Important Security Notice</p>
                 <p>Your API key is used directly from your browser. Do not use this on a public website. This tool is intended for personal or development use only.</p>
             </div>
-
+            
             <!-- Input Section -->
             <div class="space-y-4 mb-6">
                 <!-- API Key Input -->
@@ -41,38 +50,132 @@
                     <input type="password" id="api-key" placeholder="Enter your Gemini API Key" class="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
                     <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-xs text-blue-600 hover:underline absolute right-3 top-0 mt-1">Get an API Key</a>
                 </div>
+                
                 <!-- YouTube URL Input -->
                 <div class="relative w-full">
                     <label for="youtube-url" class="font-semibold text-gray-600 mb-1 block">YouTube Video URL</label>
                     <i class="fa-brands fa-youtube absolute left-4 top-1/2 mt-2.5 text-red-500"></i>
                     <input type="text" id="youtube-url" placeholder="Paste YouTube video URL here" class="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
+                    <div id="url-error" class="text-red-500 text-sm mt-1 hidden">Please enter a valid YouTube URL</div>
+                </div>
+                
+                <!-- Language Selection -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="source-language" class="font-semibold text-gray-600 mb-1 block">Source Language</label>
+                        <select id="source-language" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
+                            <option value="auto">Auto-detect</option>
+                            <option value="en" selected>English</option>
+                            <option value="es">Spanish</option>
+                            <option value="fr">French</option>
+                            <option value="de">German</option>
+                            <option value="zh">Chinese</option>
+                            <option value="ja">Japanese</option>
+                            <option value="ko">Korean</option>
+                            <option value="ru">Russian</option>
+                            <option value="pt">Portuguese</option>
+                            <option value="it">Italian</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label for="output-format" class="font-semibold text-gray-600 mb-1 block">Output Format</label>
+                        <select id="output-format" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
+                            <option value="srt" selected>SRT (SubRip)</option>
+                            <option value="vtt">WebVTT</option>
+                            <option value="txt">Plain Text</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Video Preview -->
+                <div id="video-preview" class="hidden mt-4">
+                    <label class="font-semibold text-gray-600 mb-1 block">Video Preview</label>
+                    <div class="aspect-video bg-gray-200 rounded-lg overflow-hidden">
+                        <iframe id="video-iframe" class="w-full h-full" frameborder="0" allowfullscreen></iframe>
+                    </div>
                 </div>
             </div>
             
-            <button id="generate-btn" class="w-full bg-blue-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors flex items-center justify-center gap-2">
-                <span id="btn-text">Generate Subtitles</span>
-                <svg id="spinner" class="animate-spin h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-            </button>
-
+            <!-- Generate Button -->
+            <div class="flex gap-3">
+                <button id="generate-btn" class="flex-1 bg-blue-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors flex items-center justify-center gap-2">
+                    <span id="btn-text">Generate Subtitles</span>
+                    <svg id="spinner" class="animate-spin h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </button>
+                <button id="preview-btn" class="bg-gray-200 text-gray-700 font-semibold px-4 py-3 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors">
+                    <i class="fa-solid fa-play"></i>
+                </button>
+            </div>
+            
+            <!-- Progress Bar -->
+            <div id="progress-container" class="mt-4 hidden">
+                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                    <div id="progress-bar" class="progress-bar bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
+                </div>
+                <div class="flex justify-between text-xs text-gray-500 mt-1">
+                    <span id="progress-status">Initializing...</span>
+                    <span id="progress-percentage">0%</span>
+                </div>
+            </div>
+            
             <!-- Status & Results -->
             <div id="output-container" class="mt-8 hidden">
                 <div id="status-container" class="text-center p-4 rounded-lg mb-4">
                     <p id="status-message" class="font-medium"></p>
                 </div>
-                <div id="results-wrapper" class="hidden">
+                
+                <div id="results-wrapper" class="hidden fade-in">
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="font-semibold text-gray-700">Generated Subtitles</h3>
+                        <div class="flex gap-2">
+                            <button id="edit-btn" class="text-sm bg-gray-200 text-gray-700 px-3 py-1 rounded-md hover:bg-gray-300">
+                                <i class="fa-solid fa-edit"></i> Edit
+                            </button>
+                            <button id="timestamp-btn" class="text-sm bg-gray-200 text-gray-700 px-3 py-1 rounded-md hover:bg-gray-300">
+                                <i class="fa-solid fa-clock"></i> Adjust
+                            </button>
+                        </div>
+                    </div>
+                    
                     <div class="relative">
                         <textarea id="subtitle-output" rows="15" readonly class="w-full p-4 border border-gray-200 bg-gray-50 rounded-lg focus:outline-none resize-none font-mono text-sm"></textarea>
                         <button id="copy-btn" title="Copy to Clipboard" class="absolute top-3 right-3 bg-gray-200 text-gray-700 px-3 py-1 rounded-md text-xs font-semibold hover:bg-gray-300">
                             <i class="fa-regular fa-copy"></i> Copy
                         </button>
                     </div>
-                    <div class="mt-4 text-center">
-                        <button id="download-btn" class="w-full sm:w-auto bg-green-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors flex items-center justify-center gap-2">
-                            <i class="fa-solid fa-download"></i> Download .srt File
+                    
+                    <div class="mt-4 flex flex-col sm:flex-row gap-3">
+                        <button id="download-btn" class="flex-1 bg-green-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-download"></i> Download Subtitle File
                         </button>
+                        <button id="retry-btn" class="flex-1 bg-gray-200 text-gray-700 font-semibold px-6 py-3 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors flex items-center justify-center gap-2 hidden">
+                            <i class="fa-solid fa-redo"></i> Retry
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Timestamp Adjustment Modal -->
+            <div id="timestamp-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+                <div class="bg-white rounded-lg p-6 w-full max-w-md">
+                    <h3 class="text-lg font-semibold mb-4">Adjust Timestamps</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label for="offset-seconds" class="block text-sm font-medium text-gray-700 mb-1">Offset (seconds)</label>
+                            <input type="number" id="offset-seconds" step="0.1" value="0" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label for="scale-factor" class="block text-sm font-medium text-gray-700 mb-1">Speed Factor</label>
+                            <input type="number" id="scale-factor" step="0.1" min="0.1" max="2.0" value="1.0" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+                    <div class="mt-6 flex justify-end space-x-3">
+                        <button id="cancel-timestamp" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">Cancel</button>
+                        <button id="apply-timestamp" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Apply</button>
                     </div>
                 </div>
             </div>
@@ -83,9 +186,16 @@
         // --- DOM Element References ---
         const apiKeyInput = document.getElementById('api-key');
         const urlInput = document.getElementById('youtube-url');
+        const sourceLanguageSelect = document.getElementById('source-language');
+        const outputFormatSelect = document.getElementById('output-format');
         const generateBtn = document.getElementById('generate-btn');
+        const previewBtn = document.getElementById('preview-btn');
         const btnText = document.getElementById('btn-text');
         const spinner = document.getElementById('spinner');
+        const progressContainer = document.getElementById('progress-container');
+        const progressBar = document.getElementById('progress-bar');
+        const progressStatus = document.getElementById('progress-status');
+        const progressPercentage = document.getElementById('progress-percentage');
         const outputContainer = document.getElementById('output-container');
         const statusContainer = document.getElementById('status-container');
         const statusMessage = document.getElementById('status-message');
@@ -93,30 +203,195 @@
         const subtitleOutput = document.getElementById('subtitle-output');
         const copyBtn = document.getElementById('copy-btn');
         const downloadBtn = document.getElementById('download-btn');
+        const retryBtn = document.getElementById('retry-btn');
+        const editBtn = document.getElementById('edit-btn');
+        const timestampBtn = document.getElementById('timestamp-btn');
+        const urlError = document.getElementById('url-error');
+        const videoPreview = document.getElementById('video-preview');
+        const videoIframe = document.getElementById('video-iframe');
+        const timestampModal = document.getElementById('timestamp-modal');
+        const offsetSecondsInput = document.getElementById('offset-seconds');
+        const scaleFactorInput = document.getElementById('scale-factor');
+        const cancelTimestampBtn = document.getElementById('cancel-timestamp');
+        const applyTimestampBtn = document.getElementById('apply-timestamp');
         
         let finalSubtitleContent = '';
-
+        let abortController = null;
+        
         // --- Event Listeners ---
         generateBtn.addEventListener('click', handleGeneration);
         copyBtn.addEventListener('click', copyToClipboard);
-        downloadBtn.addEventListener('click', downloadSRTFile);
-
+        downloadBtn.addEventListener('click', downloadSubtitleFile);
+        retryBtn.addEventListener('click', handleGeneration);
+        editBtn.addEventListener('click', toggleEditMode);
+        timestampBtn.addEventListener('click', () => timestampModal.classList.remove('hidden'));
+        cancelTimestampBtn.addEventListener('click', () => timestampModal.classList.add('hidden'));
+        applyTimestampBtn.addEventListener('click', adjustTimestamps);
+        previewBtn.addEventListener('click', toggleVideoPreview);
+        urlInput.addEventListener('input', validateYouTubeUrl);
+        
+        // --- Functions ---
+        
+        // YouTube URL validation
+        function validateYouTubeUrl() {
+            const url = urlInput.value.trim();
+            const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com\/(watch\?v=|embed\/)|youtu\.be\/)[\w-]{11}/;
+            
+            if (url && !youtubeRegex.test(url)) {
+                urlError.classList.remove('hidden');
+                return false;
+            } else {
+                urlError.classList.add('hidden');
+                return true;
+            }
+        }
+        
+        // Toggle video preview
+        function toggleVideoPreview() {
+            const url = urlInput.value.trim();
+            if (!validateYouTubeUrl()) {
+                showStatus('Please enter a valid YouTube URL first', 'error');
+                return;
+            }
+            
+            if (videoPreview.classList.contains('hidden')) {
+                // Extract video ID from URL
+                let videoId = '';
+                const youtubeRegex = /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]{11})/;
+                const match = url.match(youtubeRegex);
+                
+                if (match && match[1]) {
+                    videoId = match[1];
+                    videoIframe.src = `https://www.youtube.com/embed/${videoId}`;
+                    videoPreview.classList.remove('hidden');
+                    previewBtn.innerHTML = '<i class="fa-solid fa-eye-slash"></i>';
+                } else {
+                    showStatus('Could not extract video ID from URL', 'error');
+                }
+            } else {
+                videoPreview.classList.add('hidden');
+                videoIframe.src = '';
+                previewBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+            }
+        }
+        
+        // Toggle edit mode for subtitles
+        function toggleEditMode() {
+            if (subtitleOutput.readOnly) {
+                subtitleOutput.readOnly = false;
+                subtitleOutput.classList.remove('bg-gray-50');
+                subtitleOutput.classList.add('bg-white', 'border-blue-300');
+                editBtn.innerHTML = '<i class="fa-solid fa-save"></i> Save';
+                editBtn.classList.remove('bg-gray-200', 'text-gray-700');
+                editBtn.classList.add('bg-blue-600', 'text-white');
+            } else {
+                subtitleOutput.readOnly = true;
+                subtitleOutput.classList.add('bg-gray-50');
+                subtitleOutput.classList.remove('bg-white', 'border-blue-300');
+                editBtn.innerHTML = '<i class="fa-solid fa-edit"></i> Edit';
+                editBtn.classList.add('bg-gray-200', 'text-gray-700');
+                editBtn.classList.remove('bg-blue-600', 'text-white');
+                
+                // Update the final content with any edits
+                finalSubtitleContent = subtitleOutput.value;
+                showStatus('Subtitles updated successfully', 'success');
+            }
+        }
+        
+        // Adjust timestamps
+        function adjustTimestamps() {
+            const offsetSeconds = parseFloat(offsetSecondsInput.value) || 0;
+            const scaleFactor = parseFloat(scaleFactorInput.value) || 1.0;
+            
+            if (finalSubtitleContent) {
+                const adjustedContent = adjustTimestampsInContent(finalSubtitleContent, offsetSeconds, scaleFactor);
+                subtitleOutput.value = adjustedContent;
+                finalSubtitleContent = adjustedContent;
+                showStatus('Timestamps adjusted successfully', 'success');
+            }
+            
+            timestampModal.classList.add('hidden');
+        }
+        
+        // Helper function to adjust timestamps in SRT content
+        function adjustTimestampsInContent(content, offsetSeconds, scaleFactor) {
+            const outputFormat = outputFormatSelect.value;
+            
+            if (outputFormat === 'txt') {
+                return content; // No timestamps in plain text
+            }
+            
+            const timestampRegex = outputFormat === 'srt' 
+                ? /(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})/g
+                : /(\d{2}:\d{2}:\d{2}\.\d{3}) --> (\d{2}:\d{2}:\d{2}\.\d{3})/g;
+            
+            return content.replace(timestampRegex, (match, start, end) => {
+                const newStart = adjustTimestamp(start, offsetSeconds, scaleFactor, outputFormat);
+                const newEnd = adjustTimestamp(end, offsetSeconds, scaleFactor, outputFormat);
+                return `${newStart} --> ${newEnd}`;
+            });
+        }
+        
+        // Helper function to adjust a single timestamp
+        function adjustTimestamp(timestamp, offsetSeconds, scaleFactor, format) {
+            const separator = format === 'srt' ? ',' : '.';
+            const [time, ms] = timestamp.split(separator);
+            const [hours, minutes, seconds] = time.split(':').map(Number);
+            
+            // Convert to total milliseconds
+            let totalMs = (hours * 3600 + minutes * 60 + seconds) * 1000 + parseInt(ms);
+            
+            // Apply offset and scale
+            totalMs = Math.round((totalMs + offsetSeconds * 1000) * scaleFactor);
+            
+            // Convert back to time format
+            const newHours = Math.floor(totalMs / 3600000);
+            const newMinutes = Math.floor((totalMs % 3600000) / 60000);
+            const newSeconds = Math.floor((totalMs % 60000) / 1000);
+            const newMs = totalMs % 1000;
+            
+            // Format with leading zeros
+            return `${String(newHours).padStart(2, '0')}:${String(newMinutes).padStart(2, '0')}:${String(newSeconds).padStart(2, '0')}${separator}${String(newMs).padStart(3, '0')}`;
+        }
+        
+        // Main generation function
         async function handleGeneration() {
             const apiKey = apiKeyInput.value.trim();
             const youtubeUrl = urlInput.value.trim();
-
+            const sourceLanguage = sourceLanguageSelect.value;
+            const outputFormat = outputFormatSelect.value;
+            
             if (!apiKey || !youtubeUrl) {
                 showStatus('Please provide both an API Key and a YouTube URL.', 'error');
                 return;
             }
-
+            
+            if (!validateYouTubeUrl()) {
+                showStatus('Please enter a valid YouTube URL.', 'error');
+                return;
+            }
+            
+            // Create a new AbortController for this request
+            abortController = new AbortController();
+            
             resetUI();
             toggleLoading(true);
+            showProgress(0, 'Initializing...');
             showStatus('Sending request to Gemini API...', 'info');
-
+            
             const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:streamGenerateContent?key=${apiKey}`;
-
-            // Constructing the request body exactly like the user's example
+            
+            // Constructing the request body with language and format options
+            const languageInstruction = sourceLanguage === 'auto' 
+                ? 'Auto-detect the language and transcribe accurately.' 
+                : `The video is in ${getLanguageName(sourceLanguage)}. Transcribe accurately in this language.`;
+            
+            const formatInstruction = outputFormat === 'srt' 
+                ? 'Provide the output in the standard SRT (SubRip Subtitle) format, including numbered entries, timestamps (HH:MM:SS,ms --> HH:MM:SS,ms), and the corresponding text.'
+                : outputFormat === 'vtt'
+                ? 'Provide the output in the WebVTT format, including timestamps (HH:MM:SS.mmm --> HH:MM:SS.mmm) and the corresponding text.'
+                : 'Provide the output as plain text without timestamps.';
+            
             const requestBody = {
                 "contents": [{
                     "role": "user",
@@ -126,63 +401,118 @@
                             "fileUri": youtubeUrl
                         },
                     }, {
-                        "text": "You are an expert transcriptionist. Transcribe this video with perfect accuracy. Provide the output in the standard SRT (SubRip Subtitle) format, including numbered entries, timestamps (HH:MM:SS,ms --> HH:MM:SS,ms), and the corresponding text."
+                        "text": `You are an expert transcriptionist. ${languageInstruction} ${formatInstruction} Ensure the transcription is accurate and properly formatted.`
                     }, ]
                 }, ],
             };
-
+            
             try {
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(requestBody),
+                    signal: abortController.signal
                 });
-
+                
                 if (!response.ok) {
-                    throw new Error(`API request failed with status ${response.status}: ${response.statusText}`);
+                    const errorData = await response.json();
+                    throw new Error(`API request failed with status ${response.status}: ${response.statusText}. ${errorData.error?.message || ''}`);
                 }
                 
+                showProgress(20, 'Receiving streaming response...');
                 showStatus('Receiving streaming response from Gemini...', 'info');
                 resultsWrapper.classList.remove('hidden');
-
+                
                 // Process the streaming response
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
                 finalSubtitleContent = '';
-
+                let buffer = '';
+                
                 while (true) {
                     const { done, value } = await reader.read();
                     if (done) break;
-
-                    const chunk = decoder.decode(value);
-                    // The streaming response sends data chunks that need to be parsed
-                    try {
-                        const jsonText = chunk.replace(/^\[?,?/, '').replace(/\]?$/, '');
-                        if (jsonText.trim()) {
-                            const data = JSON.parse(jsonText);
-                            const text = data.candidates[0]?.content?.parts[0]?.text || '';
-                            finalSubtitleContent += text;
-                            subtitleOutput.value = finalSubtitleContent;
-                            // Auto-scroll to the bottom
-                            subtitleOutput.scrollTop = subtitleOutput.scrollHeight;
+                    
+                    const chunk = decoder.decode(value, { stream: true });
+                    buffer += chunk;
+                    
+                    // Process complete JSON objects in the buffer
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop(); // Keep the last incomplete line in the buffer
+                    
+                    for (const line of lines) {
+                        if (line.trim()) {
+                            try {
+                                // Remove any leading/trailing brackets or commas
+                                const jsonText = line.replace(/^\[?,?/, '').replace(/\]?$/, '');
+                                if (jsonText.trim()) {
+                                    const data = JSON.parse(jsonText);
+                                    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                                    if (text) {
+                                        finalSubtitleContent += text;
+                                        subtitleOutput.value = finalSubtitleContent;
+                                        // Auto-scroll to the bottom
+                                        subtitleOutput.scrollTop = subtitleOutput.scrollHeight;
+                                        
+                                        // Update progress (estimate based on content length)
+                                        const estimatedProgress = Math.min(90, 20 + (finalSubtitleContent.length / 50));
+                                        showProgress(estimatedProgress, 'Processing transcription...');
+                                    }
+                                }
+                            } catch (e) {
+                                console.warn("Could not parse a streaming chunk:", line);
+                            }
                         }
-                    } catch (e) {
-                        console.warn("Could not parse a streaming chunk:", chunk);
                     }
                 }
-
+                
+                showProgress(100, 'Complete!');
                 showStatus('Subtitle generation complete!', 'success');
-
+                retryBtn.classList.add('hidden');
             } catch (error) {
-                console.error('Error:', error);
-                showStatus(`An error occurred: ${error.message}. Check the console for details.`, 'error');
+                if (error.name === 'AbortError') {
+                    showStatus('Generation was cancelled', 'info');
+                } else {
+                    console.error('Error:', error);
+                    showStatus(`An error occurred: ${error.message}. Check the console for details.`, 'error');
+                    retryBtn.classList.remove('hidden');
+                }
             } finally {
                 toggleLoading(false);
+                abortController = null;
+                // Hide progress bar after a delay
+                setTimeout(() => {
+                    progressContainer.classList.add('hidden');
+                }, 2000);
             }
         }
         
-        // --- UI and Utility Functions ---
-
+        // Get language name from code
+        function getLanguageName(code) {
+            const languages = {
+                'en': 'English',
+                'es': 'Spanish',
+                'fr': 'French',
+                'de': 'German',
+                'zh': 'Chinese',
+                'ja': 'Japanese',
+                'ko': 'Korean',
+                'ru': 'Russian',
+                'pt': 'Portuguese',
+                'it': 'Italian'
+            };
+            return languages[code] || code;
+        }
+        
+        // Update progress bar
+        function showProgress(percentage, status) {
+            progressContainer.classList.remove('hidden');
+            progressBar.style.width = `${percentage}%`;
+            progressStatus.textContent = status;
+            progressPercentage.textContent = `${Math.round(percentage)}%`;
+        }
+        
+        // Show status message
         function showStatus(message, type = 'info') {
             outputContainer.classList.remove('hidden');
             statusMessage.textContent = message;
@@ -190,45 +520,111 @@
             const typeClasses = {
                 success: 'bg-green-100 text-green-800',
                 error: 'bg-red-100 text-red-800',
-                info: 'bg-blue-100 text-blue-800'
+                info: 'bg-blue-100 text-blue-800',
+                warning: 'bg-yellow-100 text-yellow-800'
             };
             statusContainer.classList.add(...(typeClasses[type] || typeClasses.info).split(' '));
         }
-
+        
+        // Toggle loading state
         function toggleLoading(isLoading) {
             generateBtn.disabled = isLoading;
             if (isLoading) {
                 btnText.textContent = 'Generating...';
                 spinner.classList.remove('hidden');
+                generateBtn.innerHTML = `
+                    <span id="btn-text">Generating...</span>
+                    <svg id="spinner" class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <button id="cancel-btn" class="ml-2 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center">
+                        <i class="fa-solid fa-times text-xs"></i>
+                    </button>
+                `;
+                
+                // Add event listener to cancel button
+                document.getElementById('cancel-btn').addEventListener('click', () => {
+                    if (abortController) {
+                        abortController.abort();
+                        toggleLoading(false);
+                    }
+                });
             } else {
                 btnText.textContent = 'Generate Subtitles';
                 spinner.classList.add('hidden');
+                generateBtn.innerHTML = `
+                    <span id="btn-text">Generate Subtitles</span>
+                    <svg id="spinner" class="animate-spin h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                `;
             }
         }
         
+        // Reset UI
         function resetUI() {
             outputContainer.classList.add('hidden');
             resultsWrapper.classList.add('hidden');
             subtitleOutput.value = '';
             finalSubtitleContent = '';
+            progressContainer.classList.add('hidden');
+            retryBtn.classList.add('hidden');
+            
+            // Reset edit mode if active
+            if (!subtitleOutput.readOnly) {
+                toggleEditMode();
+            }
         }
-
+        
+        // Copy to clipboard
         function copyToClipboard() {
             if (!subtitleOutput.value) return;
+            
             navigator.clipboard.writeText(subtitleOutput.value).then(() => {
                 const originalText = copyBtn.innerHTML;
                 copyBtn.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
                 setTimeout(() => { copyBtn.innerHTML = originalText; }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+                showStatus('Failed to copy to clipboard', 'error');
             });
         }
-
-        function downloadSRTFile() {
+        
+        // Download subtitle file
+        function downloadSubtitleFile() {
             if (!finalSubtitleContent) return;
-            const blob = new Blob([finalSubtitleContent], { type: 'text/plain;charset=utf-8' });
+            
+            const outputFormat = outputFormatSelect.value;
+            const mimeType = outputFormat === 'srt' 
+                ? 'text/srt' 
+                : outputFormat === 'vtt' 
+                ? 'text/vtt' 
+                : 'text/plain';
+            
+            const extension = outputFormat === 'srt' 
+                ? '.srt' 
+                : outputFormat === 'vtt' 
+                ? '.vtt' 
+                : '.txt';
+            
+            const blob = new Blob([finalSubtitleContent], { type: `${mimeType};charset=utf-8` });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'subtitles.srt';
+            
+            // Try to get a meaningful filename from the YouTube URL
+            let filename = 'subtitles';
+            const url = urlInput.value.trim();
+            const youtubeRegex = /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]{11})/;
+            const match = url.match(youtubeRegex);
+            
+            if (match && match[1]) {
+                filename = `youtube_${match[1]}`;
+            }
+            
+            a.download = `${filename}${extension}`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
