@@ -185,7 +185,7 @@
         </div>
     </div>
 
-    <script type="module">
+    <script>
         // --- DOM Element References ---
         const apiKeyInput = document.getElementById('api-key');
         const urlInput = document.getElementById('youtube-url');
@@ -222,32 +222,40 @@
         let finalSubtitleContent = '';
         let abortController = null;
         
-        // --- Initialize with localStorage ---
+        // --- Initialize Application ---
         document.addEventListener('DOMContentLoaded', () => {
+            console.log("DOM fully loaded");
+            
             // Load API key from localStorage if available
             const savedApiKey = localStorage.getItem('gemini_api_key');
             if (savedApiKey) {
                 apiKeyInput.value = savedApiKey;
+                console.log("API key loaded from localStorage");
             }
             
             // Save API key to localStorage when it changes
             apiKeyInput.addEventListener('input', () => {
                 localStorage.setItem('gemini_api_key', apiKeyInput.value);
+                console.log("API key saved to localStorage");
             });
             
-            // Setup event listeners
-            generateBtn.addEventListener('click', handleGeneration);
-            copyBtn.addEventListener('click', copyToClipboard);
-            downloadBtn.addEventListener('click', downloadSubtitleFile);
-            retryBtn.addEventListener('click', handleGeneration);
-            editBtn.addEventListener('click', toggleEditMode);
-            timestampBtn.addEventListener('click', () => timestampModal.classList.remove('hidden'));
-            cancelTimestampBtn.addEventListener('click', () => timestampModal.classList.add('hidden'));
-            applyTimestampBtn.addEventListener('click', adjustTimestamps);
-            previewBtn.addEventListener('click', toggleVideoPreview);
-            urlInput.addEventListener('input', validateYouTubeUrl);
+            // Setup all event listeners
+            setupEventListeners();
             
-            // Cancel button event listener
+            console.log("Application initialized");
+        });
+        
+        // --- Setup Event Listeners ---
+        function setupEventListeners() {
+            // Generate button
+            generateBtn.addEventListener('click', handleGeneration);
+            console.log("Generate button event listener attached");
+            
+            // Preview button
+            previewBtn.addEventListener('click', toggleVideoPreview);
+            console.log("Preview button event listener attached");
+            
+            // Cancel button
             cancelBtn.addEventListener('click', () => {
                 if (abortController) {
                     abortController.abort();
@@ -255,9 +263,20 @@
                     showStatus('Generation was cancelled', 'info');
                 }
             });
+            console.log("Cancel button event listener attached");
             
-            console.log("Application initialized with event listeners");
-        });
+            // Other buttons
+            copyBtn.addEventListener('click', copyToClipboard);
+            downloadBtn.addEventListener('click', downloadSubtitleFile);
+            retryBtn.addEventListener('click', handleGeneration);
+            editBtn.addEventListener('click', toggleEditMode);
+            timestampBtn.addEventListener('click', () => timestampModal.classList.remove('hidden'));
+            cancelTimestampBtn.addEventListener('click', () => timestampModal.classList.add('hidden'));
+            applyTimestampBtn.addEventListener('click', adjustTimestamps);
+            urlInput.addEventListener('input', validateYouTubeUrl);
+            
+            console.log("All event listeners attached");
+        }
         
         // --- Functions ---
         
@@ -277,6 +296,7 @@
         
         // Toggle video preview
         function toggleVideoPreview() {
+            console.log("Preview button clicked");
             const url = urlInput.value.trim();
             if (!validateYouTubeUrl()) {
                 showStatus('Please enter a valid YouTube URL first', 'error');
