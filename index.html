@@ -128,7 +128,10 @@
             <div id="video-preview" class="hidden mt-6 fade-in">
                 <label class="font-semibold text-gray-300 mb-2 block">Video Preview</label>
                 <div class="aspect-video bg-black rounded-lg overflow-hidden border border-gray-700">
-                    <iframe id="video-iframe" class="w-full h-full" frameborder="0" allowfullscreen></iframe>
+                    <div id="video-player-container" class="w-full h-full"></div>
+                </div>
+                <div id="subtitle-display" class="mt-2 p-4 bg-gray-900 rounded-lg text-center border border-gray-700 hidden" aria-live="polite">
+                    <p id="subtitle-text" class="text-gray-200 min-h-[1.5rem]">&nbsp;</p>
                 </div>
             </div>
             
@@ -254,20 +257,26 @@
         const apiKeyError = document.getElementById('api-key-error');
         const urlError = document.getElementById('url-error');
         const videoPreview = document.getElementById('video-preview');
-        const videoIframe = document.getElementById('video-iframe');
         const timestampModal = document.getElementById('timestamp-modal');
         const offsetSecondsInput = document.getElementById('offset-seconds');
         const scaleFactorInput = document.getElementById('scale-factor');
         const cancelTimestampBtn = document.getElementById('cancel-timestamp');
         const applyTimestampBtn = document.getElementById('apply-timestamp');
-        
+        const subtitleDisplay = document.getElementById('subtitle-display');
+        const subtitleText = document.getElementById('subtitle-text');
+
         let finalSubtitleContent = '';
         let abortController = null;
-        let player;
+        let player; // For duration check
         let isYTAPILoaded = false;
+        
+        let parsedSubtitles = [];
+        let subtitleSyncInterval = null;
+        let previewPlayer = null;
 
         const LANGUAGES = [ { value: "auto", text: "Original Video Language" }, { value: "Afrikaans", text: "Afrikaans" }, { value: "Albanian", text: "Albanian" }, { value: "Amharic", text: "Amharic" }, { value: "Arabic", text: "Arabic" }, { value: "Armenian", text: "Armenian" }, { value: "Assamese", text: "Assamese" }, { value: "Aymara", text: "Aymara" }, { value: "Azerbaijani", text: "Azerbaijani" }, { value: "Bambara", text: "Bambara" }, { value: "Basque", text: "Basque" }, { value: "Belarusian", text: "Belarusian" }, { value: "Bengali", text: "Bengali" }, { value: "Bhojpuri", text: "Bhojpuri" }, { value: "Bosnian", text: "Bosnian" }, { value: "Bulgarian", text: "Bulgarian" }, { value: "Catalan", text: "Catalan" }, { value: "Cebuano", text: "Cebuano" }, { value: "Chichewa", text: "Chichewa (Nyanja)" }, { value: "Chinese (Simplified)", text: "Chinese (Simplified)" }, { value: "Chinese (Traditional)", text: "Chinese (Traditional)" }, { value: "Corsican", text: "Corsican" }, { value: "Croatian", text: "Croatian" }, { value: "Czech", text: "Czech" }, { value: "Danish", text: "Danish" }, { value: "Dhivehi", text: "Dhivehi" }, { value: "Dogri", text: "Dogri" }, { value: "Dutch", text: "Dutch" }, { value: "English", text: "English" }, { value: "Esperanto", text: "Esperanto" }, { value: "Estonian", text: "Estonian" }, { value: "Ewe", text: "Ewe" }, { value: "Filipino", text: "Filipino (Tagalog)" }, { value: "Finnish", text: "Finnish" }, { value: "French", text: "French" }, { value: "Frisian", text: "Frisian" }, { value: "Galician", text: "Galician" }, { value: "Georgian", text: "Georgian" }, { value: "German", text: "German" }, { value: "Greek", text: "Greek" }, { value: "Guarani", text: "Guarani" }, { value: "Gujarati", text: "Gujarati" }, { value: "Haitian Creole", text: "Haitian Creole" }, { value: "Hausa", text: "Hausa" }, { value: "Hawaiian", text: "Hawaiian" }, { value: "Hebrew", text: "Hebrew" }, { value: "Hindi", text: "Hindi" }, { value: "Hmong", text: "Hmong" }, { value: "Hungarian", text: "Hungarian" }, { value: "Icelandic", text: "Icelandic" }, { value: "Igbo", text: "Igbo" }, { value: "Ilocano", text: "Ilocano" }, { value: "Indonesian", text: "Indonesian" }, { value: "Irish", text: "Irish" }, { value: "Italian", text: "Italian" }, { value: "Japanese", text: "Japanese" }, { value: "Javanese", text: "Javanese" }, { value: "Kannada", text: "Kannada" }, { value: "Kazakh", text: "Kazakh" }, { value: "Khmer", text: "Khmer" }, { value: "Kinyarwanda", text: "Kinyarwanda" }, { value: "Konkani", text: "Konkani" }, { value: "Korean", text: "Korean" }, { value: "Krio", text: "Krio" }, { value: "Kurdish (Kurmanji)", text: "Kurdish (Kurmanji)" }, { value: "Kurdish (Sorani)", text: "Kurdish (Sorani)" }, { value: "Kyrgyz", text: "Kyrgyz" }, { value: "Lao", text: "Lao" }, { value: "Latin", text: "Latin" }, { value: "Latvian", text: "Latvian" }, { value: "Lingala", text: "Lingala" }, { value: "Lithuanian", text: "Lithuanian" }, { value: "Luganda", text: "Luganda" }, { value: "Luxembourgish", text: "Luxembourgish" }, { value: "Macedonian", text: "Macedonian" }, { value: "Maithili", text: "Maithili" }, { value: "Malagasy", text: "Malagasy" }, { value: "Malay", text: "Malay" }, { value: "Malayalam", text: "Malayalam" }, { value: "Maltese", text: "Maltese" }, { value: "Maori", text: "Maori" }, { value: "Marathi", text: "Marathi" }, { value: "Meiteilon (Manipuri)", text: "Meiteilon (Manipuri)" }, { value: "Mizo", text: "Mizo" }, { value: "Mongolian", text: "Mongolian" }, { value: "Myanmar (Burmese)", text: "Myanmar (Burmese)" }, { value: "Nepali", text: "Nepali" }, { value: "Norwegian", text: "Norwegian" }, { value: "Odia (Oriya)", text: "Odia (Oriya)" }, { value: "Oromo", text: "Oromo" }, { value: "Pashto", text: "Pashto" }, { value: "Persian", text: "Persian (Farsi)" }, { value: "Polish", text: "Polish" }, { value: "Portuguese", text: "Portuguese" }, { value: "Punjabi", text: "Punjabi" }, { value: "Quechua", text: "Quechua" }, { value: "Romanian", text: "Romanian" }, { value: "Russian", text: "Russian" }, { value: "Samoan", text: "Samoan" }, { value: "Sanskrit", text: "Sanskrit" }, { value: "Scots Gaelic", text: "Scots Gaelic" }, { value: "Sepedi", text: "Sepedi" }, { value: "Serbian", text: "Serbian" }, { value: "Sesotho", text: "Sesotho" }, { value: "Shona", text: "Shona" }, { value: "Sindhi", text: "Sindhi" }, { value: "Sinhala", text: "Sinhala" }, { value: "Slovak", text: "Slovak" }, { value: "Slovenian", text: "Slovenian" }, { value: "Somali", text: "Somali" }, { value: "Spanish", text: "Spanish" }, { value: "Sundanese", text: "Sundanese" }, { value: "Swahili", text: "Swahili" }, { value: "Swedish", text: "Swedish" }, { value: "Tajik", text: "Tajik" }, { value: "Tamil", text: "Tamil" }, { value: "Tatar", text: "Tatar" }, { value: "Telugu", text: "Telugu" }, { value: "Thai", text: "Thai" }, { value: "Tigrinya", text: "Tigrinya" }, { value: "Tsonga", text: "Tsonga" }, { value: "Turkish", text: "Turkish" }, { value: "Turkmen", text: "Turkmen" }, { value: "Twi", text: "Twi (Akan)" }, { value: "Ukrainian", text: "Ukrainian" }, { value: "Urdu", text: "Urdu" }, { value: "Uyghur", text: "Uyghur" }, { value: "Uzbek", text: "Uzbek" }, { value: "Vietnamese", text: "Vietnamese" }, { value: "Welsh", text: "Welsh" }, { value: "Xhosa", text: "Xhosa" }, { value: "Yiddish", text: "Yiddish" }, { value: "Yoruba", text: "Yoruba" }, { value: "Zulu", text: "Zulu" }];
         const MODELS = ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash', 'gemini-2.0-flash-lite'];
+        const RTL_LANGUAGES = new Set(['Arabic', 'Hebrew', 'Persian', 'Urdu', 'Yiddish', 'Dhivehi', 'Sindhi', 'Pashto', 'Uyghur', 'Kurdish (Sorani)']);
         
         function onYouTubeIframeAPIReady() { isYTAPILoaded = true; }
         
@@ -410,25 +419,150 @@
         
         function toggleVideoPreview() {
             const url = urlInput.value.trim();
-            if (!validateYouTubeUrl()) { showStatus('Please enter a valid YouTube URL first', 'error'); return; }
-            
+            if (!validateYouTubeUrl()) {
+                showStatus('Please enter a valid YouTube URL first', 'error');
+                return;
+            }
+
             if (videoPreview.classList.contains('hidden')) {
                 const youtubeRegex = /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]{11})/;
                 const match = url.match(youtubeRegex);
                 if (match && match[1]) {
-                    videoIframe.src = `https://www.youtube.com/embed/${match[1]}`;
-                    videoPreview.classList.remove('hidden');
+                    setupPreviewPlayer(match[1]);
                     previewBtn.innerHTML = '<i class="fa-solid fa-eye-slash w-4"></i>';
                 } else {
                     showStatus('Could not extract video ID from URL', 'error');
                 }
             } else {
-                videoPreview.classList.add('hidden');
-                videoIframe.src = '';
+                destroyPreviewPlayer();
                 previewBtn.innerHTML = '<i class="fa-solid fa-play w-4"></i>';
             }
         }
         
+        function setupPreviewPlayer(videoId) {
+            if (previewPlayer) {
+                destroyPreviewPlayer();
+            }
+            videoPreview.classList.remove('hidden');
+
+            previewPlayer = new YT.Player('video-player-container', {
+                height: '100%',
+                width: '100%',
+                videoId: videoId,
+                playerVars: { 'playsinline': 1, 'rel': 0 },
+                events: {
+                    'onReady': onPlayerReady,
+                    'onStateChange': onPlayerStateChange
+                }
+            });
+        }
+
+        function destroyPreviewPlayer() {
+            if (previewPlayer && typeof previewPlayer.destroy === 'function') {
+                previewPlayer.destroy();
+            }
+            previewPlayer = null;
+            if (subtitleSyncInterval) {
+                clearInterval(subtitleSyncInterval);
+                subtitleSyncInterval = null;
+            }
+            videoPreview.classList.add('hidden');
+            subtitleDisplay.classList.add('hidden');
+            subtitleText.innerHTML = '&nbsp;';
+        }
+
+        // --- Subtitle Playback Synchronization ---
+
+        function timeStringToSeconds(timeString) {
+            if (!timeString) return 0;
+            const [timePart, msPart] = timeString.split(/[,.]/);
+            if (!timePart || !msPart) return 0;
+            const timeParts = timePart.split(':').map(Number);
+            
+            let seconds = 0;
+            if (timeParts.length === 3) {
+                seconds = timeParts[0] * 3600 + timeParts[1] * 60 + timeParts[2];
+            } else if (timeParts.length === 2) {
+                seconds = timeParts[0] * 60 + timeParts[1];
+            }
+            
+            return seconds + (parseInt(msPart, 10) / 1000);
+        }
+
+        function parseSubtitlesForPlayback(content) {
+            const format = outputFormatSelect.value;
+            if (format === 'txt' || !content) return [];
+            
+            const lines = content.trim().split(/\r?\n/);
+            const subtitles = [];
+            const startIndex = lines[0].toUpperCase().startsWith('WEBVTT') ? 1 : 0;
+
+            for (let i = startIndex; i < lines.length; i++) {
+                if (lines[i] && lines[i].includes('-->')) {
+                    const [startStr, endStr] = lines[i].split(' --> ');
+                    const textLines = [];
+                    let j = i + 1;
+                    while (j < lines.length && lines[j]) {
+                        textLines.push(lines[j]);
+                        j++;
+                    }
+                    subtitles.push({
+                        start: timeStringToSeconds(startStr.trim()),
+                        end: timeStringToSeconds(endStr.trim().split(' ')[0]),
+                        text: textLines.join('<br>')
+                    });
+                    i = j;
+                }
+            }
+            return subtitles;
+        }
+
+        function updateSubtitles(currentTime) {
+            if (!parsedSubtitles || parsedSubtitles.length === 0) return;
+            const currentSubtitle = parsedSubtitles.find(sub => currentTime >= sub.start && currentTime <= sub.end);
+            
+            const newText = currentSubtitle ? currentSubtitle.text : '&nbsp;';
+            if (subtitleText.innerHTML !== newText) {
+                subtitleText.innerHTML = newText;
+            }
+        }
+        
+        function onPlayerReady(event) {
+            if (parsedSubtitles.length > 0) {
+                subtitleDisplay.classList.remove('hidden');
+            }
+            
+            const selectedLanguage = outputLanguageSelect.options[outputLanguageSelect.selectedIndex].text;
+            if (RTL_LANGUAGES.has(selectedLanguage)) {
+                subtitleText.dir = 'rtl';
+                subtitleDisplay.classList.remove('text-center');
+                subtitleDisplay.classList.add('text-right');
+            } else {
+                subtitleText.dir = 'ltr';
+                subtitleDisplay.classList.remove('text-right');
+                subtitleDisplay.classList.add('text-center');
+            }
+        }
+
+        function onPlayerStateChange(event) {
+            if (event.data === YT.PlayerState.PLAYING) {
+                if (subtitleSyncInterval) clearInterval(subtitleSyncInterval);
+                subtitleSyncInterval = setInterval(() => {
+                    if (previewPlayer && typeof previewPlayer.getCurrentTime === 'function') {
+                        updateSubtitles(previewPlayer.getCurrentTime());
+                    }
+                }, 100);
+            } else {
+                if (subtitleSyncInterval) {
+                    clearInterval(subtitleSyncInterval);
+                    subtitleSyncInterval = null;
+                }
+                if (event.data !== YT.PlayerState.PAUSED) {
+                    subtitleText.innerHTML = '&nbsp;';
+                }
+            }
+        }
+
         // --- Subtitle Editing & Formatting ---
         function toggleEditMode() {
             const isReadOnly = subtitleOutput.readOnly;
@@ -445,6 +579,7 @@
                 subtitleOutput.focus();
             } else { // Was editable, now readonly
                 finalSubtitleContent = subtitleOutput.value;
+                parsedSubtitles = parseSubtitlesForPlayback(finalSubtitleContent);
                 showStatus('Subtitles updated locally', 'success');
             }
         }
@@ -456,6 +591,7 @@
                 const adjusted = adjustTimestampsInContent(finalSubtitleContent, offset, scale);
                 subtitleOutput.value = adjusted;
                 finalSubtitleContent = adjusted;
+                parsedSubtitles = parseSubtitlesForPlayback(finalSubtitleContent);
                 showStatus('Timestamps adjusted successfully', 'success');
             }
             timestampModal.classList.add('hidden');
@@ -618,12 +754,17 @@ Strict rules:
                 }
                 
                 try {
-                    // At this point, finalSubtitleJsonString should be the complete JSON array string.
                     const cleanedJsonString = finalSubtitleJsonString.replace(/^```json\s*/, '').replace(/\s*```$/, '');
                     const rawData = JSON.parse(cleanedJsonString);
                     const subtitleData = filterAndValidateSubtitles(rawData);
                     finalSubtitleContent = formatSubtitlesFromJSON(subtitleData, outputFormatSelect.value);
                     subtitleOutput.value = finalSubtitleContent;
+
+                    parsedSubtitles = parseSubtitlesForPlayback(finalSubtitleContent);
+                    if (!videoPreview.classList.contains('hidden') && parsedSubtitles.length > 0) {
+                        subtitleDisplay.classList.remove('hidden');
+                    }
+                    
                     showProgress(100, 'Complete!');
                     showStatus('Subtitle generation complete!', 'success');
                 } catch (jsonError) {
@@ -678,6 +819,12 @@ Strict rules:
             finalSubtitleContent = '';
             retryBtn.classList.add('hidden');
             if (!subtitleOutput.readOnly) toggleEditMode();
+            
+            parsedSubtitles = [];
+            if (previewPlayer) {
+               subtitleDisplay.classList.add('hidden');
+               subtitleText.innerHTML = '&nbsp;';
+            }
         }
         
         function copyToClipboard() {
