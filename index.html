@@ -536,16 +536,30 @@
             }
             return subtitles;
         }
-
+        
+        // --- FIX START ---
+        // This function is updated to handle mixed LTR and RTL text correctly.
         function updateSubtitles(currentTime) {
             if (!parsedSubtitles || parsedSubtitles.length === 0) return;
             const currentSubtitle = parsedSubtitles.find(sub => currentTime >= sub.start && currentTime <= sub.end);
             
-            const newText = currentSubtitle ? currentSubtitle.text : '&nbsp;';
-            if (subtitleText.innerHTML !== newText) {
-                subtitleText.innerHTML = newText;
+            let newHtml;
+            if (currentSubtitle && currentSubtitle.text) {
+                // Split multi-line subtitles and wrap each line in a div with dir="auto".
+                // This correctly handles mixed LTR/RTL content within the same subtitle cue,
+                // letting the browser decide the direction for each line individually.
+                newHtml = currentSubtitle.text.split('<br>')
+                    .map(line => `<div dir="auto">${line}</div>`)
+                    .join('');
+            } else {
+                newHtml = '&nbsp;';
+            }
+
+            if (subtitleText.innerHTML !== newHtml) {
+                subtitleText.innerHTML = newHtml;
             }
         }
+        // --- FIX END ---
         
         function onPlayerReady(event) {
             if (parsedSubtitles.length > 0) {
@@ -723,9 +737,6 @@
             let langInstruction;
             let finalOutputInstruction;
             
-            // --- FIX START ---
-            // This section has been modified to create a more explicit and forceful prompt
-            // to ensure the AI performs the translation correctly.
             if (targetLanguage === 'auto') {
                 langInstruction = 'Your task is to transcribe the video in its original language.';
                 finalOutputInstruction = `The 'text' field must contain the final transcribed text.`;
@@ -752,7 +763,6 @@ Language and Accuracy: Correct any minor audio ambiguities through context, but 
 JSON Format: Output the subtitles strictly as a JSON array of objects, where each object follows this schema: [ { "start": "HH:MM:SS.mmm", "end": "HH:MM:SS.mmm", "text": "Subtitle text line 1\nSubtitle text line 2 (if needed)" }, ... ] Ensure the output is valid JSON with no additional keys or content.
 Edge Cases: If the video includes music, lyrics, on-screen text, or non-verbal elements (e.g., [applause]), include them in the subtitles where appropriate. Ensure the entire video duration is covered from start to end.
 Negative Prompt (Strictly Avoid These): Do not introduce any repetitions in text segments; avoid long or verbose segments exceeding 80 characters; prevent any non-sequential or overlapping timestamps; refrain from outputting invalid JSON structures, extra markdown, commentary, or non-schema elements; ignore paraphrasing or summarization—stick to verbatim transcription; do not omit details or fabricate content; avoid mislabeling speakers or ignoring audible elements; prevent gaps in coverage or inaccurate timings; do not add translations unless explicitly requested.`;
-            // --- FIX END ---
             
             const baseRequestBody = {
                 contents: [{"role": "user", "parts": [{"fileData": {"mimeType": "video/mp4", "fileUri": youtubeUrl}}, {"text": promptText}]}],
