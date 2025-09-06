@@ -44,6 +44,54 @@
         textarea::-webkit-scrollbar-thumb:hover {
             background-color: #718096; /* bg-gray-500 */
         }
+        
+        /* --- FIX START: Styles for Video Subtitle Overlay --- */
+        #video-container {
+            position: relative;
+            width: 100%;
+            height: 0;
+            padding-bottom: 56.25%; /* 16:9 aspect ratio */
+            background-color: #000;
+        }
+        #video-player-container, #subtitle-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        #subtitle-overlay {
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            padding: 1% 2% 2%; /* Responsive padding */
+            box-sizing: border-box;
+            color: white;
+            text-align: center;
+            pointer-events: none; /* Allows clicks to go through to the video player */
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
+            font-size: 1.5vw; /* Responsive font size */
+        }
+        #subtitle-overlay .subtitle-line {
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 0.2em 0.4em;
+            display: inline;
+            line-height: 1.4;
+        }
+        /* Adjust font size for smaller screens */
+        @media (max-width: 768px) {
+            #subtitle-overlay {
+                font-size: 2.5vw;
+            }
+        }
+         /* Adjust font size for larger screens to prevent it from getting too big */
+        @media (min-width: 1200px) {
+            #subtitle-overlay {
+                font-size: 18px;
+            }
+        }
+        /* --- FIX END --- */
     </style>
 </head>
 <body class="bg-gray-900 text-gray-300 flex items-center justify-center min-h-screen font-sans p-4">
@@ -138,21 +186,23 @@
             </div>
 
             <!-- Video Preview -->
+            <!-- --- FIX START: Updated HTML for video container and overlay --- -->
             <div id="video-preview" class="hidden mt-6 fade-in">
                 <label class="font-semibold text-gray-300 mb-2 block">Video Preview</label>
-                <div class="aspect-video bg-black rounded-lg overflow-hidden border border-gray-700">
-                    <div id="video-player-container" class="w-full h-full"></div>
-                </div>
-                <div id="subtitle-display" class="mt-2 p-4 bg-gray-900 rounded-lg text-center border border-gray-700 hidden" aria-live="polite">
-                    <p id="subtitle-text" class="text-gray-200 min-h-[1.5rem]">&nbsp;</p>
+                <div id="video-container" class="rounded-lg overflow-hidden border border-gray-700">
+                    <div id="video-player-container"></div>
+                    <div id="subtitle-overlay" aria-live="polite">
+                        <p id="subtitle-text">&nbsp;</p>
+                    </div>
                 </div>
             </div>
-            
+            <!-- --- FIX END --- -->
+
             <!-- Generate Button -->
             <div class="flex gap-3 mt-8">
                 <button id="generate-btn" class="flex-1 bg-blue-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed focus:outline-none focus:ring-4 focus:ring-blue-500/50 transition-all duration-200 flex items-center justify-center gap-3">
                     <span id="btn-text">Generate Subtitles</span>
-                    <svg id="spinner" class="animate-spin h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <svg id="spinner" class="animate-spin h-5 w-5 text-white hidden" xmlns="http://www.w.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
@@ -278,8 +328,11 @@
         const scaleFactorInput = document.getElementById('scale-factor');
         const cancelTimestampBtn = document.getElementById('cancel-timestamp');
         const applyTimestampBtn = document.getElementById('apply-timestamp');
-        const subtitleDisplay = document.getElementById('subtitle-display');
+        // --- FIX START: Update DOM references for new structure ---
+        const subtitleOverlay = document.getElementById('subtitle-overlay');
         const subtitleText = document.getElementById('subtitle-text');
+        const videoContainer = document.getElementById('video-container');
+        // --- FIX END ---
 
         let finalSubtitleContent = '';
         let abortController = null;
@@ -459,6 +512,7 @@
             }
         }
         
+        // --- FIX START: Update player setup for fullscreen overlay ---
         function setupPreviewPlayer(videoId) {
             if (previewPlayer) {
                 destroyPreviewPlayer();
@@ -469,13 +523,19 @@
                 height: '100%',
                 width: '100%',
                 videoId: videoId,
-                playerVars: { 'playsinline': 1, 'rel': 0 },
+                playerVars: { 
+                    'playsinline': 1, 
+                    'rel': 0,
+                    'fs': 0, // Disable native fullscreen button to use our custom one
+                    'controls': 1
+                },
                 events: {
                     'onReady': onPlayerReady,
                     'onStateChange': onPlayerStateChange
                 }
             });
         }
+        // --- FIX END ---
 
         function destroyPreviewPlayer() {
             if (previewPlayer && typeof previewPlayer.destroy === 'function') {
@@ -487,7 +547,7 @@
                 subtitleSyncInterval = null;
             }
             videoPreview.classList.add('hidden');
-            subtitleDisplay.classList.add('hidden');
+            subtitleOverlay.classList.add('hidden');
             subtitleText.innerHTML = '&nbsp;';
         }
 
@@ -537,19 +597,14 @@
             return subtitles;
         }
         
-        // --- FIX START ---
-        // This function is updated to handle mixed LTR and RTL text correctly.
         function updateSubtitles(currentTime) {
             if (!parsedSubtitles || parsedSubtitles.length === 0) return;
             const currentSubtitle = parsedSubtitles.find(sub => currentTime >= sub.start && currentTime <= sub.end);
             
             let newHtml;
             if (currentSubtitle && currentSubtitle.text) {
-                // Split multi-line subtitles and wrap each line in a div with dir="auto".
-                // This correctly handles mixed LTR/RTL content within the same subtitle cue,
-                // letting the browser decide the direction for each line individually.
                 newHtml = currentSubtitle.text.split('<br>')
-                    .map(line => `<div dir="auto">${line}</div>`)
+                    .map(line => `<div dir="auto"><span class="subtitle-line">${line}</span></div>`)
                     .join('');
             } else {
                 newHtml = '&nbsp;';
@@ -559,22 +614,19 @@
                 subtitleText.innerHTML = newHtml;
             }
         }
-        // --- FIX END ---
         
         function onPlayerReady(event) {
             if (parsedSubtitles.length > 0) {
-                subtitleDisplay.classList.remove('hidden');
+                subtitleOverlay.classList.remove('hidden');
             }
             
             const selectedLanguage = outputLanguageSelect.options[outputLanguageSelect.selectedIndex].text;
             if (RTL_LANGUAGES.has(selectedLanguage)) {
-                subtitleText.dir = 'rtl';
-                subtitleDisplay.classList.remove('text-center');
-                subtitleDisplay.classList.add('text-right');
+                subtitleOverlay.classList.add('text-right');
+                subtitleOverlay.classList.remove('text-center');
             } else {
-                subtitleText.dir = 'ltr';
-                subtitleDisplay.classList.remove('text-right');
-                subtitleDisplay.classList.add('text-center');
+                subtitleOverlay.classList.remove('text-right');
+                subtitleOverlay.classList.add('text-center');
             }
         }
 
@@ -828,7 +880,7 @@ Negative Prompt (Strictly Avoid These): Do not introduce any repetitions in text
 
                     parsedSubtitles = parseSubtitlesForPlayback(finalSubtitleContent);
                     if (!videoPreview.classList.contains('hidden') && parsedSubtitles.length > 0) {
-                        subtitleDisplay.classList.remove('hidden');
+                        subtitleOverlay.classList.remove('hidden');
                     }
                     
                     showProgress(100, 'Complete!');
@@ -888,7 +940,7 @@ Negative Prompt (Strictly Avoid These): Do not introduce any repetitions in text
             
             parsedSubtitles = [];
             if (previewPlayer) {
-               subtitleDisplay.classList.add('hidden');
+               subtitleOverlay.classList.add('hidden');
                subtitleText.innerHTML = '&nbsp;';
             }
         }
