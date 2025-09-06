@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YouTube Subtitle Generator with Gemini</title>
+    <title>Video Subtitle Generator with Gemini</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -52,7 +52,7 @@
             padding-bottom: 56.25%; /* 16:9 aspect ratio */
             background-color: #000;
         }
-        #video-player-container, #subtitle-overlay {
+        #video-player-container, #local-video-player, #subtitle-overlay {
             position: absolute;
             top: 0;
             left: 0;
@@ -89,7 +89,6 @@
             }
         }
         
-        /* --- FIX START: Styles for Input Tabs --- */
         .tab-button {
             transition: all 0.2s ease-in-out;
             border-bottom: 2px solid transparent;
@@ -104,11 +103,9 @@
         .tab-content.active {
             display: block;
         }
-        /* Custom file input */
         #file-upload-label {
             cursor: pointer;
         }
-        /* --- FIX END --- */
     </style>
 </head>
 <body class="bg-gray-900 text-gray-300 flex items-center justify-center min-h-screen font-sans p-4">
@@ -143,7 +140,6 @@
                 
                 <hr class="border-gray-700">
 
-                <!-- --- FIX START: New Tabbed Input Section --- -->
                 <div>
                     <div class="border-b border-gray-700 mb-4">
                         <nav class="-mb-px flex space-x-6" aria-label="Tabs">
@@ -186,7 +182,6 @@
                         </div>
                     </div>
                 </div>
-                <!-- --- FIX END --- -->
 
                 <div id="duration-container" class="hidden fade-in">
                      <label for="video-duration" class="font-semibold text-gray-300 mb-2 block">Video Duration (MM:SS)</label>
@@ -235,19 +230,21 @@
 
             <div id="video-preview" class="hidden mt-6 fade-in">
                 <label class="font-semibold text-gray-300 mb-2 block">Video Preview</label>
+                <!-- --- FIX START: Add HTML5 video player --- -->
                 <div id="video-container" class="rounded-lg overflow-hidden border border-gray-700">
                     <div id="video-player-container"></div>
+                    <video id="local-video-player" class="hidden" controls></video>
                     <div id="subtitle-overlay" aria-live="polite">
                         <p id="subtitle-text">&nbsp;</p>
                     </div>
                 </div>
+                <!-- --- FIX END --- -->
             </div>
 
-            <!-- Generate Button -->
             <div class="flex gap-3 mt-8">
                 <button id="generate-btn" class="flex-1 bg-blue-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed focus:outline-none focus:ring-4 focus:ring-blue-500/50 transition-all duration-200 flex items-center justify-center gap-3">
                     <span id="btn-text">Generate Subtitles</span>
-                    <svg id="spinner" class="animate-spin h-5 w-5 text-white hidden" xmlns="http://www.w.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <svg id="spinner" class="animate-spin h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
@@ -308,7 +305,6 @@
         </div>
     </div>
 
-    <!-- Timestamp Adjustment Modal -->
     <div id="timestamp-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden">
         <div class="bg-gray-800 border border-gray-700 rounded-lg p-6 w-full max-w-md">
             <h3 class="text-lg font-semibold text-white mb-4">Adjust Timestamps</h3>
@@ -373,17 +369,8 @@
         const subtitleText = document.getElementById('subtitle-text');
         const videoContainer = document.getElementById('video-container');
 
-        // --- FIX START: New DOM references for tabs and inputs ---
-        const tabButtons = {
-            youtube: document.getElementById('tab-youtube'),
-            upload: document.getElementById('tab-upload'),
-            url: document.getElementById('tab-url'),
-        };
-        const tabContents = {
-            youtube: document.getElementById('content-youtube'),
-            upload: document.getElementById('content-upload'),
-            url: document.getElementById('content-url'),
-        };
+        const tabButtons = { youtube: document.getElementById('tab-youtube'), upload: document.getElementById('tab-upload'), url: document.getElementById('tab-url') };
+        const tabContents = { youtube: document.getElementById('content-youtube'), upload: document.getElementById('content-upload'), url: document.getElementById('content-url') };
         const youtubeUrlInput = document.getElementById('youtube-url');
         const urlError = document.getElementById('url-error');
         const videoUploadInput = document.getElementById('video-upload');
@@ -391,6 +378,9 @@
         const directUrlInput = document.getElementById('direct-url');
         const durationContainer = document.getElementById('duration-container');
         const videoDurationInput = document.getElementById('video-duration');
+        // --- FIX START: Add reference to the local video player ---
+        const localPlayer = document.getElementById('local-video-player');
+        const ytPlayerContainer = document.getElementById('video-player-container');
         // --- FIX END ---
 
         let finalSubtitleContent = '';
@@ -402,14 +392,13 @@
         let subtitleSyncInterval = null;
         let previewPlayer = null;
 
-        // --- FIX START: State management for inputs ---
-        let currentInputMode = 'youtube'; // 'youtube', 'upload', 'url'
+        let currentInputMode = 'youtube';
         let uploadedFile = {
             base64: null,
             mimeType: null,
             name: null,
+            fileObject: null, // --- FIX: Store the actual file object for the player
         };
-        // --- FIX END ---
 
         const LANGUAGES = [ { value: "auto", text: "Original Video Language" }, { value: "Afrikaans", text: "Afrikaans" }, { value: "Albanian", text: "Albanian" }, { value: "Amharic", text: "Amharic" }, { value: "Arabic", text: "Arabic" }, { value: "Armenian", text: "Armenian" }, { value: "Assamese", text: "Assamese" }, { value: "Aymara", text: "Aymara" }, { value: "Azerbaijani", text: "Azerbaijani" }, { value: "Bambara", text: "Bambara" }, { value: "Basque", text: "Basque" }, { value: "Belarusian", text: "Belarusian" }, { value: "Bengali", text: "Bengali" }, { value: "Bhojpuri", text: "Bhojpuri" }, { value: "Bosnian", text: "Bosnian" }, { value: "Bulgarian", text: "Bulgarian" }, { value: "Catalan", text: "Catalan" }, { value: "Cebuano", text: "Cebuano" }, { value: "Chichewa", text: "Chichewa (Nyanja)" }, { value: "Chinese (Simplified)", text: "Chinese (Simplified)" }, { value: "Chinese (Traditional)", text: "Chinese (Traditional)" }, { value: "Corsican", text: "Corsican" }, { value: "Croatian", text: "Croatian" }, { value: "Czech", text: "Czech" }, { value: "Danish", text: "Danish" }, { value: "Dhivehi", text: "Dhivehi" }, { value: "Dogri", text: "Dogri" }, { value: "Dutch", text: "Dutch" }, { value: "English", text: "English" }, { value: "Esperanto", text: "Esperanto" }, { value: "Estonian", text: "Estonian" }, { value: "Ewe", text: "Ewe" }, { value: "Filipino", text: "Filipino (Tagalog)" }, { value: "Finnish", text: "Finnish" }, { value: "French", text: "French" }, { value: "Frisian", text: "Frisian" }, { value: "Galician", text: "Galician" }, { value: "Georgian", text: "Georgian" }, { value: "German", text: "German" }, { value: "Greek", text: "Greek" }, { value: "Guarani", text: "Guarani" }, { value: "Gujarati", text: "Gujarati" }, { value: "Haitian Creole", text: "Haitian Creole" }, { value: "Hausa", text: "Hausa" }, { value: "Hawaiian", text: "Hawaiian" }, { value: "Hebrew", text: "Hebrew" }, { value: "Hindi", text: "Hindi" }, { value: "Hmong", text: "Hmong" }, { value: "Hungarian", text: "Hungarian" }, { value: "Icelandic", text: "Icelandic" }, { value: "Igbo", text: "Igbo" }, { value: "Ilocano", text: "Ilocano" }, { value: "Indonesian", text: "Indonesian" }, { value: "Irish", text: "Irish" }, { value: "Italian", text: "Italian" }, { value: "Japanese", text: "Japanese" }, { value: "Javanese", text: "Javanese" }, { value: "Kannada", text: "Kannada" }, { value: "Kazakh", text: "Kazakh" }, { value: "Khmer", text: "Khmer" }, { value: "Kinyarwanda", text: "Kinyarwanda" }, { value: "Konkani", text: "Konkani" }, { value: "Korean", text: "Korean" }, { value: "Krio", text: "Krio" }, { value: "Kurdish (Kurmanji)", text: "Kurdish (Kurmanji)" }, { value: "Kurdish (Sorani)", text: "Kurdish (Sorani)" }, { value: "Kyrgyz", text: "Kyrgyz" }, { value: "Lao", text: "Lao" }, { value: "Latin", text: "Latin" }, { value: "Latvian", text: "Latvian" }, { value: "Lingala", text: "Lingala" }, { value: "Lithuanian", text: "Lithuanian" }, { value: "Luganda", text: "Luganda" }, { value: "Luxembourgish", text: "Luxembourgish" }, { value: "Macedonian", text: "Macedonian" }, { value: "Maithili", text: "Maithili" }, { value: "Malagasy", text: "Malagasy" }, { value: "Malay", text: "Malay" }, { value: "Malayalam", text: "Malayalam" }, { value: "Maltese", text: "Maltese" }, { value: "Maori", text: "Maori" }, { value: "Marathi", text: "Marathi" }, { value: "Meiteilon (Manipuri)", text: "Meiteilon (Manipuri)" }, { value: "Mizo", text: "Mizo" }, { value: "Mongolian", text: "Mongolian" }, { value: "Myanmar (Burmese)", text: "Myanmar (Burmese)" }, { value: "Nepali", text: "Nepali" }, { value: "Norwegian", text: "Norwegian" }, { value: "Odia (Oriya)", text: "Odia (Oriya)" }, { value: "Oromo", text: "Oromo" }, { value: "Pashto", text: "Pashto" }, { value: "Persian", text: "Persian (Farsi)" }, { value: "Polish", text: "Polish" }, { value: "Portuguese", text: "Portuguese" }, { value: "Punjabi", text: "Punjabi" }, { value: "Quechua", text: "Quechua" }, { value: "Romanian", text: "Romanian" }, { value: "Russian", text: "Russian" }, { value: "Samoan", text: "Samoan" }, { value: "Sanskrit", text: "Sanskrit" }, { value: "Scots Gaelic", text: "Scots Gaelic" }, { value: "Sepedi", text: "Sepedi" }, { value: "Serbian", text: "Serbian" }, { value: "Sesotho", text: "Sesotho" }, { value: "Shona", text: "Shona" }, { value: "Sindhi", text: "Sindhi" }, { value: "Sinhala", text: "Sinhala" }, { value: "Slovak", text: "Slovak" }, { value: "Slovenian", text: "Slovenian" }, { value: "Somali", text: "Somali" }, { value: "Spanish", text: "Spanish" }, { value: "Sundanese", text: "Sundanese" }, { value: "Swahili", text: "Swahili" }, { value: "Swedish", text: "Swedish" }, { value: "Tajik", text: "Tajik" }, { value: "Tamil", text: "Tamil" }, { value: "Tatar", text: "Tatar" }, { value: "Telugu", text: "Telugu" }, { value: "Thai", text: "Thai" }, { value: "Tigrinya", text: "Tigrinya" }, { value: "Tsonga", text: "Tsonga" }, { value: "Turkish", text: "Turkish" }, { value: "Turkmen", text: "Turkmen" }, { value: "Twi", text: "Twi (Akan)" }, { value: "Ukrainian", text: "Ukrainian" }, { value: "Urdu", text: "Urdu" }, { value: "Uyghur", text: "Uyghur" }, { value: "Uzbek", text: "Uzbek" }, { value: "Vietnamese", text: "Vietnamese" }, { value: "Welsh", text: "Welsh" }, { value: "Xhosa", text: "Xhosa" }, { value: "Yiddish", text: "Yiddish" }, { value: "Yoruba", text: "Yoruba" }, { value: "Zulu", text: "Zulu" }];
         const MODELS = ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash', 'gemini-2.0-flash-lite'];
@@ -431,7 +420,7 @@
                 option.textContent = lang.text;
                 outputLanguageSelect.appendChild(option);
             });
-            outputLanguageSelect.value = 'Persian'; // Default to English
+            outputLanguageSelect.value = 'Persian';
         }
 
         function populateModels() {
@@ -441,7 +430,7 @@
                 option.textContent = model;
                 modelSelect.appendChild(option);
             });
-            modelSelect.value = 'gemini-2.5-pro'; // Set a default
+            modelSelect.value = 'gemini-2.5-pro';
         }
 
         function setupEventListeners() {
@@ -465,27 +454,23 @@
             cancelTimestampBtn.addEventListener('click', () => timestampModal.classList.add('hidden'));
             applyTimestampBtn.addEventListener('click', adjustTimestamps);
             
-            apiKeyInput.addEventListener('input', () => {
-                if (apiKeyInput.value.trim()) apiKeyError.classList.add('hidden');
-            });
+            apiKeyInput.addEventListener('input', () => { if (apiKeyInput.value.trim()) apiKeyError.classList.add('hidden'); });
+            useProxyCheckbox.addEventListener('change', () => { customProxyContainer.classList.toggle('hidden', !useProxyCheckbox.checked); });
 
-            useProxyCheckbox.addEventListener('change', () => {
-                customProxyContainer.classList.toggle('hidden', !useProxyCheckbox.checked);
-            });
-
-            // --- FIX START: New event listeners for tabs and inputs ---
-            Object.keys(tabButtons).forEach(key => {
-                tabButtons[key].addEventListener('click', () => switchTab(key));
-            });
+            Object.keys(tabButtons).forEach(key => { tabButtons[key].addEventListener('click', () => switchTab(key)); });
 
             youtubeUrlInput.addEventListener('input', validateYouTubeUrl);
             youtubeUrlInput.addEventListener('change', handleUrlInputChange);
             videoUploadInput.addEventListener('change', handleFileUpload);
             directUrlInput.addEventListener('change', handleDirectUrlChange);
+
+            // --- FIX START: Add event listeners for the local player ---
+            localPlayer.addEventListener('timeupdate', () => { updateSubtitles(localPlayer.currentTime); });
+            localPlayer.addEventListener('seeked', () => { updateSubtitles(localPlayer.currentTime); });
+            localPlayer.addEventListener('play', onPlayerReady); // Reuse to show overlay
             // --- FIX END ---
         }
 
-        // --- FIX START: Tab switching logic ---
         function switchTab(mode) {
             currentInputMode = mode;
             
@@ -494,16 +479,16 @@
                 tabContents[key].classList.toggle('active', key === mode);
             });
             
-            // Preview is only for YouTube
-            previewBtn.disabled = mode !== 'youtube';
-            destroyPreviewPlayer(); // Clean up player when switching away from YT tab
-            durationContainer.classList.add('hidden'); // Hide duration on switch
+            // --- FIX START: Enable preview for YouTube and Upload ---
+            previewBtn.disabled = !(mode === 'youtube' || mode === 'upload');
+            destroyPlayers();
+            // --- FIX END ---
             
-            // Trigger change event to re-validate/process new active input
+            durationContainer.classList.add('hidden');
+            
             if(mode === 'youtube' && youtubeUrlInput.value) handleUrlInputChange();
             if(mode === 'url' && directUrlInput.value) handleDirectUrlChange();
         }
-        // --- FIX END ---
         
         function toggleApiKeyVisibility() {
             const isPassword = apiKeyInput.type === 'password';
@@ -515,9 +500,7 @@
             const savedKey = localStorage.getItem('geminiApiKey');
             const shouldSave = localStorage.getItem('saveGeminiApiKey') === 'true';
             saveApiKeyCheckbox.checked = shouldSave;
-            if (savedKey && shouldSave) {
-                apiKeyInput.value = savedKey;
-            }
+            if (savedKey && shouldSave) apiKeyInput.value = savedKey;
         }
 
         function saveApiKey() {
@@ -544,11 +527,9 @@
             return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
         }
         
-        // --- FIX START: Generic duration handler for all video types ---
         function getVideoDuration(source) {
             const video = document.createElement('video');
             video.preload = 'metadata';
-            
             video.onloadedmetadata = () => {
                 window.URL.revokeObjectURL(video.src);
                 if (video.duration && isFinite(video.duration)) {
@@ -556,26 +537,20 @@
                     durationContainer.classList.remove('hidden');
                 }
             };
-            
             video.onerror = () => {
                 window.URL.revokeObjectURL(video.src);
-                showStatus('Could not get video duration. The file might be corrupt or the URL inaccessible.', 'warning');
+                showStatus('Could not get video duration.', 'warning');
             };
             
-            if (source instanceof File) {
-                video.src = URL.createObjectURL(source);
-            } else {
-                video.src = source;
-            }
+            if (source instanceof File) video.src = URL.createObjectURL(source);
+            else video.src = source;
         }
-        // --- FIX END ---
         
         function getYouTubeVideoDuration(videoId) {
-            if (!isYTAPILoaded) { setTimeout(() => getYouTubeVideoDuration(videoId), 500); return; }
+            if (!isYTAPILoadED) { setTimeout(() => getYouTubeVideoDuration(videoId), 500); return; }
             if (player) { player.destroy(); player = null; }
-
             player = new YT.Player('player', {
-                height: '0', width: '0', videoId: videoId,
+                height: '0', width: '0', videoId,
                 events: {
                     'onReady': (event) => {
                         const duration = event.target.getDuration();
@@ -585,10 +560,7 @@
                         }
                         event.target.destroy(); player = null;
                     },
-                    'onError': () => {
-                        showStatus('Could not fetch video details.', 'error');
-                        if (player) { player.destroy(); player = null; }
-                    }
+                    'onError': () => { if (player) { player.destroy(); player = null; } }
                 }
             });
         }
@@ -596,8 +568,7 @@
         function handleUrlInputChange() {
             const url = youtubeUrlInput.value.trim();
             if (validateYouTubeUrl()) {
-                const youtubeRegex = /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]{11})/;
-                const match = url.match(youtubeRegex);
+                const match = url.match(/(?:v=|be\/|embed\/)([\w-]{11})/);
                 if (match && match[1]) {
                     durationContainer.classList.add('hidden');
                     getYouTubeVideoDuration(match[1]);
@@ -607,17 +578,16 @@
             }
         }
 
-        // --- FIX START: New handlers for upload and direct URL ---
         function handleFileUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
 
-            // Clear other inputs
             youtubeUrlInput.value = '';
             directUrlInput.value = '';
 
             uploadedFile.name = file.name;
             uploadedFile.mimeType = file.type;
+            uploadedFile.fileObject = file;
             fileUploadText.textContent = file.name;
             fileUploadText.classList.remove('text-gray-400');
             fileUploadText.classList.add('text-white');
@@ -625,79 +595,85 @@
             getVideoDuration(file);
 
             const reader = new FileReader();
-            reader.onload = (e) => {
-                // Remove the data URL prefix (e.g., "data:video/mp4;base64,")
-                uploadedFile.base64 = e.target.result.split(',')[1];
-            };
-            reader.onerror = () => {
-                showStatus('Error reading the selected file.', 'error');
-                uploadedFile.base64 = null;
-            }
+            reader.onload = (e) => { uploadedFile.base64 = e.target.result.split(',')[1]; };
+            reader.onerror = () => { showStatus('Error reading the selected file.', 'error'); uploadedFile.base64 = null; }
             reader.readAsDataURL(file);
         }
 
         function handleDirectUrlChange() {
             const url = directUrlInput.value.trim();
             if (!url) return;
-
-             // Clear other inputs
             youtubeUrlInput.value = '';
             videoUploadInput.value = '';
             fileUploadText.textContent = 'Click to choose a video file';
-            fileUploadText.classList.add('text-gray-400');
-            fileUploadText.classList.remove('text-white');
-            uploadedFile = { base64: null, mimeType: null, name: null };
-
+            uploadedFile = { base64: null, mimeType: null, name: null, fileObject: null };
             getVideoDuration(url);
         }
-        // --- FIX END ---
         
+        // --- FIX START: New player management functions ---
         function toggleVideoPreview() {
-            const url = youtubeUrlInput.value.trim();
-            if (!validateYouTubeUrl()) {
-                showStatus('Please enter a valid YouTube URL first', 'error');
-                return;
-            }
-
-            if (videoPreview.classList.contains('hidden')) {
-                const youtubeRegex = /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]{11})/;
-                const match = url.match(youtubeRegex);
-                if (match && match[1]) {
-                    setupPreviewPlayer(match[1]);
+            if (videoPreview.classList.contains('hidden')) { // SHOW PLAYER
+                if (currentInputMode === 'youtube') {
+                    const url = youtubeUrlInput.value.trim();
+                    if (!validateYouTubeUrl()) { showStatus('Please enter a valid YouTube URL first', 'error'); return; }
+                    const match = url.match(/(?:v=|be\/|embed\/)([\w-]{11})/);
+                    if (match && match[1]) {
+                        setupYouTubePlayer(match[1]);
+                        previewBtn.innerHTML = '<i class="fa-solid fa-eye-slash w-4"></i>';
+                    } else { showStatus('Could not extract video ID from URL', 'error'); }
+                } else if (currentInputMode === 'upload') {
+                    if (!uploadedFile.fileObject) { showStatus('Please select a file first to preview.', 'error'); return; }
+                    setupLocalPlayer(uploadedFile.fileObject);
                     previewBtn.innerHTML = '<i class="fa-solid fa-eye-slash w-4"></i>';
-                } else {
-                    showStatus('Could not extract video ID from URL', 'error');
                 }
-            } else {
-                destroyPreviewPlayer();
+            } else { // HIDE PLAYER
+                destroyPlayers();
                 previewBtn.innerHTML = '<i class="fa-solid fa-play w-4"></i>';
             }
         }
-        
-        function setupPreviewPlayer(videoId) {
-            if (previewPlayer) { destroyPreviewPlayer(); }
-            videoPreview.classList.remove('hidden');
 
+        function setupYouTubePlayer(videoId) {
+            destroyPlayers();
+            videoPreview.classList.remove('hidden');
+            localPlayer.classList.add('hidden');
+            ytPlayerContainer.classList.remove('hidden');
             previewPlayer = new YT.Player('video-player-container', {
-                height: '100%', width: '100%', videoId: videoId,
+                height: '100%', width: '100%', videoId,
                 playerVars: { 'playsinline': 1, 'rel': 0, 'fs': 1, 'controls': 1 },
                 events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange }
             });
         }
+        
+        function setupLocalPlayer(file) {
+            destroyPlayers();
+            videoPreview.classList.remove('hidden');
+            ytPlayerContainer.classList.add('hidden');
+            localPlayer.classList.remove('hidden');
+            const fileURL = URL.createObjectURL(file);
+            localPlayer.src = fileURL;
+            onPlayerReady();
+        }
 
-        function destroyPreviewPlayer() {
+        function destroyPlayers() {
             if (previewPlayer && typeof previewPlayer.destroy === 'function') {
                 previewPlayer.destroy();
             }
             previewPlayer = null;
-            if (subtitleSyncInterval) {
-                clearInterval(subtitleSyncInterval);
-                subtitleSyncInterval = null;
+            if (localPlayer.src) {
+                localPlayer.pause();
+                URL.revokeObjectURL(localPlayer.src);
+                localPlayer.removeAttribute('src');
+                localPlayer.load();
             }
+            localPlayer.classList.add('hidden');
+            ytPlayerContainer.classList.remove('hidden');
+            if (subtitleSyncInterval) clearInterval(subtitleSyncInterval);
+            subtitleSyncInterval = null;
             videoPreview.classList.add('hidden');
             subtitleText.innerHTML = '&nbsp;';
         }
-
+        // --- FIX END ---
+        
         function timeStringToSeconds(timeString) {
             if (!timeString) return 0;
             const [timePart, msPart] = timeString.split(/[,.]/);
@@ -710,8 +686,7 @@
         }
 
         function parseSubtitlesForPlayback(content) {
-            const format = outputFormatSelect.value;
-            if (format === 'txt' || !content) return [];
+            if (!content) return [];
             const lines = content.trim().split(/\r?\n/);
             const subtitles = [];
             const startIndex = lines[0].toUpperCase().startsWith('WEBVTT') ? 1 : 0;
@@ -720,10 +695,7 @@
                     const [startStr, endStr] = lines[i].split(' --> ');
                     const textLines = [];
                     let j = i + 1;
-                    while (j < lines.length && lines[j]) {
-                        textLines.push(lines[j]);
-                        j++;
-                    }
+                    while (j < lines.length && lines[j]) { textLines.push(lines[j]); j++; }
                     subtitles.push({
                         start: timeStringToSeconds(startStr.trim()),
                         end: timeStringToSeconds(endStr.trim().split(' ')[0]),
@@ -744,15 +716,13 @@
             if (subtitleText.innerHTML !== newHtml) subtitleText.innerHTML = newHtml;
         }
         
-        function onPlayerReady(event) {
+        function onPlayerReady() {
             if (parsedSubtitles.length > 0) subtitleOverlay.classList.remove('hidden');
             const selectedLanguage = outputLanguageSelect.options[outputLanguageSelect.selectedIndex].text;
             if (RTL_LANGUAGES.has(selectedLanguage)) {
-                subtitleOverlay.classList.add('text-right');
-                subtitleOverlay.classList.remove('text-center');
+                subtitleOverlay.classList.add('text-right'); subtitleOverlay.classList.remove('text-center');
             } else {
-                subtitleOverlay.classList.remove('text-right');
-                subtitleOverlay.classList.add('text-center');
+                subtitleOverlay.classList.remove('text-right'); subtitleOverlay.classList.add('text-center');
             }
         }
 
@@ -765,10 +735,7 @@
                     }
                 }, 100);
             } else {
-                if (subtitleSyncInterval) {
-                    clearInterval(subtitleSyncInterval);
-                    subtitleSyncInterval = null;
-                }
+                if (subtitleSyncInterval) { clearInterval(subtitleSyncInterval); subtitleSyncInterval = null; }
                 if (event.data !== YT.PlayerState.PAUSED) subtitleText.innerHTML = '&nbsp;';
             }
         }
@@ -792,8 +759,7 @@
             const scale = parseFloat(scaleFactorInput.value) || 1.0;
             if (finalSubtitleContent) {
                 const adjusted = adjustTimestampsInContent(finalSubtitleContent, offset, scale);
-                subtitleOutput.value = adjusted;
-                finalSubtitleContent = adjusted;
+                subtitleOutput.value = adjusted; finalSubtitleContent = adjusted;
                 parsedSubtitles = parseSubtitlesForPlayback(finalSubtitleContent);
                 showStatus('Timestamps adjusted successfully', 'success');
             }
@@ -801,8 +767,7 @@
         }
         
         function adjustTimestampsInContent(content, offset, scale) {
-            const format = outputFormatSelect.value;
-            if (format === 'txt') return content;
+            if (outputFormatSelect.value === 'txt') return content;
             const regex = /(\d{2}:\d{2}:\d{2}[,.]\d{3}) --> (\d{2}:\d{2}:\d{2}[,.]\d{3})/g;
             return content.replace(regex, (m, start, end) => `${adjustTimestamp(start, offset, scale)} --> ${adjustTimestamp(end, offset, scale)}`);
         }
@@ -821,26 +786,19 @@
             const sep = format === 'vtt' ? '.' : ',';
             if (!ts || typeof ts !== 'string') return `00:00:00${sep}000`;
             const parts = ts.split(/[:.,]/).map(p => parseInt(p, 10) || 0);
-            let h = 0, m = 0, s = 0, ms = 0;
-            if (parts.length === 4) [h, m, s, ms] = parts; else if (parts.length === 3) [m, s, ms] = parts; else if (parts.length === 2) [m, s] = parts;
-            let totalMs = h * 3600000 + m * 60000 + s * 1000 + ms;
-            const newH = Math.floor(totalMs / 3600000); totalMs %= 3600000;
-            const newM = Math.floor(totalMs / 60000); totalMs %= 60000;
-            const newS = Math.floor(totalMs / 1000);
-            return `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}:${String(newS).padStart(2, '0')}${sep}${String(totalMs % 1000).padStart(3, '0')}`;
+            let h=0,m=0,s=0,ms=0;
+            if(parts.length===4)[h,m,s,ms]=parts;else if(parts.length===3)[m,s,ms]=parts;else if(parts.length===2)[m,s]=parts;
+            let totalMs=h*3600000+m*60000+s*1000+ms;
+            const nH=Math.floor(totalMs/3600000);totalMs%=3600000;const nM=Math.floor(totalMs/60000);totalMs%=60000;const nS=Math.floor(totalMs/1000);
+            return `${String(nH).padStart(2,'0')}:${String(nM).padStart(2,'0')}:${String(nS).padStart(2,'0')}${sep}${String(totalMs%1000).padStart(3,'0')}`;
         }
 
         function filterAndValidateSubtitles(data) {
             if (!Array.isArray(data)) return [];
             let lastEndTimeMs = -1;
-            const timeToMs = (ts) => {
-                if (!ts) return 0;
-                const sep = ts.includes(',') ? ',' : '.';
-                const [time, msStr] = ts.split(sep); const [h, m, s] = time.split(':').map(Number);
-                return (h * 3600 + m * 60 + s) * 1000 + Number(msStr);
-            };
+            const timeToMs = ts => { if (!ts) return 0; const sep = ts.includes(',') ? ',' : '.'; const [time, msStr] = ts.split(sep); const [h,m,s] = time.split(':').map(Number); return (h*3600+m*60+s)*1000+Number(msStr); };
             return data.filter(item => {
-                if (!item || typeof item.text !== 'string' || !item.startTime || !item.endTime) return false;
+                if (!item||typeof item.text!=='string'||!item.startTime||!item.endTime) return false;
                 const startTimeMs = timeToMs(normalizeTimestamp(item.startTime));
                 const endTimeMs = timeToMs(normalizeTimestamp(item.endTime));
                 if (endTimeMs <= startTimeMs || startTimeMs < lastEndTimeMs - 100) return false;
@@ -859,7 +817,6 @@
             }
         }
 
-        // --- FIX START: Major update to handle multiple input sources ---
         async function handleGeneration() {
             const apiKey = apiKeyInput.value.trim();
             if (!apiKey) { showStatus('Please provide your Gemini API Key.', 'error'); apiKeyError.classList.remove('hidden'); return; }
@@ -877,14 +834,10 @@
             } else if (currentInputMode === 'url') {
                 const url = directUrlInput.value.trim();
                 if (!url) { showStatus('Please enter a direct video URL.', 'error'); return; }
-                // We guess the MIME type for direct URLs, as we can't know it for sure on the client side.
                 videoPart = { "fileData": { "mimeType": "video/mp4", "fileUri": url } };
             }
 
-            if (!videoPart) {
-                showStatus('No valid video source selected.', 'error');
-                return;
-            }
+            if (!videoPart) { showStatus('No valid video source selected.', 'error'); return; }
 
             abortController = new AbortController();
             resetUI();
@@ -896,52 +849,27 @@
             const useProxy = useProxyCheckbox.checked;
             const customProxyUrl = customProxyInput.value.trim();
             
-            if (useProxy && !customProxyUrl) {
-                toggleLoading(false);
-                showStatus('Please enter a Custom Proxy URL.', 'error');
-                return;
-            }
+            if (useProxy && !customProxyUrl) { toggleLoading(false); showStatus('Please enter a Custom Proxy URL.', 'error'); return; }
             
             const directApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:streamGenerateContent?alt=sse&key=${apiKey}`;
             const API_URL = useProxy ? customProxyUrl : directApiUrl;
-
-            const responseSchema = {
-                type: 'ARRAY', items: { type: 'OBJECT',
-                    properties: { startTime: { type: 'STRING' }, endTime: { type: 'STRING' }, text: { type: 'STRING' } },
-                    required: ["startTime", "endTime", "text"]
-                }
-            };
-            
+            const responseSchema = { type: 'ARRAY', items: { type: 'OBJECT', properties: { startTime: {type:'STRING'}, endTime: {type:'STRING'}, text: {type:'STRING'}}, required:["startTime","endTime","text"]}};
             const targetLanguage = outputLanguageSelect.value;
             const duration = videoDurationInput.value.trim();
-            let langInstruction, finalOutputInstruction;
             
-            if (targetLanguage === 'auto') {
-                langInstruction = 'Your task is to transcribe the video in its original language.';
-                finalOutputInstruction = `The 'text' field must contain the final transcribed text.`;
-            } else {
-                langInstruction = `CRITICAL: Your primary task is to TRANSLATE the video's audio into ${targetLanguage} and generate subtitles. The final output MUST be in ${targetLanguage}.`;
-                finalOutputInstruction = `The 'text' field must contain the final TRANSLATED text in ${targetLanguage}.`;
-            }
-            
+            let langInstruction = targetLanguage==='auto' ? 'Your task is to transcribe the video in its original language.' : `CRITICAL: Your primary task is to TRANSLATE the video's audio into ${targetLanguage} and generate subtitles. The final output MUST be in ${targetLanguage}.`;
+            let finalOutputInstruction = `The 'text' field must contain the final ${targetLanguage === 'auto' ? 'transcribed' : 'TRANSLATED'} text.`;
             const durationInstruction = duration ? `The video duration is ${duration}. Timestamps must not exceed this.` : '';
-            const promptText = `You are an expert transcriptionist. Your main task is: ${langInstruction} ${durationInstruction} Create a precise, time-stamped transcript. Strict rules: NO REPETITION. SHORT SEGMENTS under 45 characters. SEQUENTIAL TIMESTAMPS. ACCURATE JSON: Output a single, valid JSON array of objects matching the schema. ${finalOutputInstruction} No extra text or markdown. Ensure 100% fidelity to the audio content, breaking transcription into logical subtitle segments. Use HH:MM:SS.mmm format for timestamps. Handle multiple speakers and background sounds where relevant. The entire video duration must be covered.`;
+            const promptText = `You are an expert transcriptionist. Your main task is: ${langInstruction} ${durationInstruction} Create a precise, time-stamped transcript. Strict rules: NO REPETITION. SHORT SEGMENTS under 45 characters. SEQUENTIAL TIMESTAMPS. ACCURATE JSON: Output a single, valid JSON array of objects matching the schema. ${finalOutputInstruction} No extra text or markdown. Ensure 100% fidelity to the audio content. Use HH:MM:SS.mmm format for timestamps.`;
             
             const baseRequestBody = {
                 contents: [{"role": "user", "parts": [videoPart, {"text": promptText}]}],
                 generationConfig: { "responseMimeType": "application/json", "responseSchema": responseSchema }
             };
-
             const finalRequestBody = useProxy ? { endpoint: directApiUrl, ...baseRequestBody } : baseRequestBody;
             
             try {
-                const response = await fetch(API_URL, { 
-                    method: 'POST', 
-                    headers: { 'Content-Type': 'application/json' }, 
-                    body: JSON.stringify(finalRequestBody), 
-                    signal: abortController.signal 
-                });
-
+                const response = await fetch(API_URL, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(finalRequestBody), signal: abortController.signal });
                 if (!response.ok) { const err = await response.json(); throw new Error(`API Error (${response.status}): ${err.error?.message || 'Unknown'}`); }
                 
                 showProgress(20, 'Receiving response...');
@@ -949,8 +877,7 @@
                 
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
-                let buffer = '';
-                let finalSubtitleJsonString = '';
+                let buffer = '', finalSubtitleJsonString = '';
 
                 while (true) {
                     const { done, value } = await reader.read();
@@ -981,12 +908,10 @@
                     const subtitleData = filterAndValidateSubtitles(rawData);
                     finalSubtitleContent = formatSubtitlesFromJSON(subtitleData, outputFormatSelect.value);
                     subtitleOutput.value = finalSubtitleContent;
-
                     parsedSubtitles = parseSubtitlesForPlayback(finalSubtitleContent);
-                    if (currentInputMode === 'youtube' && !videoPreview.classList.contains('hidden') && parsedSubtitles.length > 0) {
+                    if (!videoPreview.classList.contains('hidden') && parsedSubtitles.length > 0) {
                         subtitleOverlay.classList.remove('hidden');
                     }
-                    
                     showProgress(100, 'Complete!');
                     showStatus('Subtitle generation complete!', 'success');
                 } catch (jsonError) {
@@ -1004,7 +929,6 @@
                 abortController = null;
             }
         }
-        // --- FIX END ---
         
         function showProgress(percentage, status) {
             progressContainer.classList.remove('hidden');
@@ -1016,13 +940,8 @@
         function showStatus(message, type = 'info') {
             outputContainer.classList.remove('hidden');
             statusMessage.textContent = message;
-            const classes = {
-                success: 'bg-green-900/50 text-green-300 border border-green-700',
-                error: 'bg-red-900/50 text-red-400 border border-red-700',
-                info: 'bg-blue-900/50 text-blue-300 border border-blue-700',
-                warning: 'bg-yellow-900/50 text-yellow-300 border border-yellow-700'
-            };
-            statusContainer.className = `text-center p-3 rounded-lg mb-4 ${classes[type] || classes.info}`;
+            const classes = { success: 'bg-green-900/50 text-green-300 border-green-700', error: 'bg-red-900/50 text-red-400 border-red-700', info: 'bg-blue-900/50 text-blue-300 border-blue-700', warning: 'bg-yellow-900/50 text-yellow-300 border-yellow-700' };
+            statusContainer.className = `text-center p-3 rounded-lg mb-4 border ${classes[type] || classes.info}`;
         }
         
         function toggleLoading(isLoading) {
@@ -1042,10 +961,7 @@
             retryBtn.classList.add('hidden');
             if (!subtitleOutput.readOnly) toggleEditMode();
             parsedSubtitles = [];
-            if (previewPlayer) {
-               subtitleOverlay.classList.add('hidden');
-               subtitleText.innerHTML = '&nbsp;';
-            }
+            if (!videoPreview.classList.contains('hidden')) subtitleText.innerHTML = '&nbsp;';
         }
         
         function copyToClipboard() {
@@ -1065,11 +981,8 @@
             const a = document.createElement('a');
             a.href = url;
             let fileName = 'subtitles';
-            if (currentInputMode === 'youtube') {
-                fileName = youtubeUrlInput.value.trim().match(/(?:v=|be\/|embed\/)([\w-]{11})/)?.[1] || 'subtitles';
-            } else if (currentInputMode === 'upload' && uploadedFile.name) {
-                fileName = uploadedFile.name.split('.').slice(0, -1).join('.') || 'subtitles';
-            }
+            if (currentInputMode === 'youtube') fileName = youtubeUrlInput.value.trim().match(/(?:v=|be\/|embed\/)([\w-]{11})/)?.[1] || 'subtitles';
+            else if (currentInputMode === 'upload' && uploadedFile.name) fileName = uploadedFile.name.split('.').slice(0, -1).join('.') || 'subtitles';
             a.download = `subtitles_${fileName}.${format}`;
             a.click();
             URL.revokeObjectURL(url);
