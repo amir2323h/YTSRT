@@ -45,7 +45,6 @@
             background-color: #718096; /* bg-gray-500 */
         }
         
-        /* --- FIX START: Styles for Video Subtitle Overlay --- */
         #video-container {
             position: relative;
             width: 100%;
@@ -79,17 +78,35 @@
             display: inline;
             line-height: 1.4;
         }
-        /* Adjust font size for smaller screens */
         @media (max-width: 768px) {
             #subtitle-overlay {
                 font-size: 2.5vw;
             }
         }
-         /* Adjust font size for larger screens to prevent it from getting too big */
         @media (min-width: 1200px) {
             #subtitle-overlay {
                 font-size: 18px;
             }
+        }
+        
+        /* --- FIX START: Styles for Input Tabs --- */
+        .tab-button {
+            transition: all 0.2s ease-in-out;
+            border-bottom: 2px solid transparent;
+        }
+        .tab-button.active {
+            border-bottom-color: #3b82f6; /* blue-500 */
+            color: #d1d5db; /* gray-300 */
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        /* Custom file input */
+        #file-upload-label {
+            cursor: pointer;
         }
         /* --- FIX END --- */
     </style>
@@ -101,7 +118,7 @@
             <div class="text-center mb-8">
                 <h1 class="text-3xl md:text-4xl font-bold text-white flex items-center justify-center gap-3">
                     <i class="fa-solid fa-wand-magic-sparkles text-blue-400"></i>
-                    <span>YouTube Subtitle Generator</span>
+                    <span>Subtitle Generator</span>
                 </h1>
                 <p class="text-gray-400 mt-2">Powered by the Google Gemini API</p>
             </div>
@@ -126,67 +143,96 @@
                 
                 <hr class="border-gray-700">
 
-                <!-- Video Input Section -->
-                <div class="space-y-4">
-                    <div>
-                        <label for="youtube-url" class="font-semibold text-gray-300 mb-2 block">YouTube Video URL</label>
-                        <div class="relative">
-                            <i class="fa-brands fa-youtube absolute left-4 top-1/2 -translate-y-1/2 text-red-500"></i>
-                            <input type="text" id="youtube-url" placeholder="Paste YouTube video URL here" class="w-full pl-12 pr-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200">
-                        </div>
-                        <div id="url-error" class="text-red-400 text-sm mt-1 hidden">Please enter a valid YouTube URL</div>
+                <!-- --- FIX START: New Tabbed Input Section --- -->
+                <div>
+                    <div class="border-b border-gray-700 mb-4">
+                        <nav class="-mb-px flex space-x-6" aria-label="Tabs">
+                            <button id="tab-youtube" type="button" class="tab-button active font-semibold py-3 px-1 text-gray-400 hover:text-white">YouTube</button>
+                            <button id="tab-upload" type="button" class="tab-button font-semibold py-3 px-1 text-gray-400 hover:text-white">Upload File</button>
+                            <button id="tab-url" type="button" class="tab-button font-semibold py-3 px-1 text-gray-400 hover:text-white">Direct URL</button>
+                        </nav>
                     </div>
-                    
-                    <div id="duration-container" class="hidden fade-in">
-                         <label for="video-duration" class="font-semibold text-gray-300 mb-2 block">Video Duration (MM:SS)</label>
-                        <div class="relative">
-                            <i class="fa-solid fa-clock absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
-                            <input type="text" id="video-duration" placeholder="e.g., 12:34" class="w-full pl-12 pr-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200">
-                        </div>
-                        <p class="text-xs text-gray-500 mt-1">Auto-detected. Please edit if incorrect.</p>
-                    </div>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+                    <div id="content-youtube" class="tab-content active space-y-4">
                         <div>
-                            <label for="output-language" class="font-semibold text-gray-300 mb-2 block">Output Language</label>
-                            <select id="output-language" class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200">
-                                <!-- Options populated by JavaScript -->
-                            </select>
-                        </div>
-                        <div>
-                            <label for="output-format" class="font-semibold text-gray-300 mb-2 block">Output Format</label>
-                            <select id="output-format" class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200">
-                                <option value="srt" selected>SRT (SubRip)</option>
-                                <option value="vtt">WebVTT</option>
-                                <option value="txt">Plain Text</option>
-                            </select>
-                        </div>
-                         <div>
-                            <label for="model-select" class="font-semibold text-gray-300 mb-2 block">Model</label>
-                            <select id="model-select" class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200">
-                                <!-- Options populated by JavaScript -->
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <!-- Proxy Settings -->
-                    <div class="space-y-2 pt-4 mt-4 border-t border-gray-700">
-                        <div class="flex items-center">
-                            <input id="use-proxy-checkbox" type="checkbox" class="h-4 w-4 rounded bg-gray-600 border-gray-500 text-blue-500 focus:ring-blue-500">
-                            <label for="use-proxy-checkbox" class="ml-2 text-sm text-gray-400">Use Proxy</label>
-                        </div>
-                        <div id="custom-proxy-container" class="hidden">
-                            <label for="custom-proxy-input" class="block text-sm font-medium text-gray-300">Custom Proxy URL</label>
-                            <input type="url" id="custom-proxy-input" placeholder="https://your-proxy.workers.dev/" class="mt-1 w-full p-2.5 bg-gray-700 border border-gray-600 text-white placeholder-gray-400 text-sm rounded-lg focus:ring-2 focus:ring-blue-500" value="https://middleman.yebekhe.workers.dev">
-                            <p class="text-xs text-gray-500 mt-1">Deploy your own proxy using <a href="https://github.com/yebekhe/middleman" target="_blank" rel="noopener noreferrer" class="underline hover:text-blue-400">Middleman</a>.</p>
+                            <label for="youtube-url" class="font-semibold text-gray-300 mb-2 block">YouTube Video URL</label>
+                            <div class="relative">
+                                <i class="fa-brands fa-youtube absolute left-4 top-1/2 -translate-y-1/2 text-red-500"></i>
+                                <input type="text" id="youtube-url" placeholder="Paste YouTube video URL here" class="w-full pl-12 pr-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200">
+                            </div>
+                            <div id="url-error" class="text-red-400 text-sm mt-1 hidden">Please enter a valid YouTube URL</div>
                         </div>
                     </div>
 
+                    <div id="content-upload" class="tab-content space-y-4">
+                         <div>
+                            <label class="font-semibold text-gray-300 mb-2 block">Local Video File</label>
+                            <label id="file-upload-label" for="video-upload" class="relative flex items-center justify-center w-full px-4 py-3 bg-gray-700 border-2 border-dashed border-gray-600 rounded-lg hover:bg-gray-600 transition-all">
+                                <i class="fa-solid fa-upload mr-3 text-gray-400"></i>
+                                <span id="file-upload-text" class="text-gray-400">Click to choose a video file</span>
+                            </label>
+                            <input type="file" id="video-upload" accept="video/*" class="hidden">
+                             <p class="text-xs text-gray-500 mt-1">For best results, use files under 20MB.</p>
+                        </div>
+                    </div>
+
+                    <div id="content-url" class="tab-content space-y-4">
+                        <div>
+                            <label for="direct-url" class="font-semibold text-gray-300 mb-2 block">Direct Video URL</label>
+                            <div class="relative">
+                                <i class="fa-solid fa-link absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                <input type="url" id="direct-url" placeholder="https://example.com/video.mp4" class="w-full pl-12 pr-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- --- FIX END --- -->
+
+                <div id="duration-container" class="hidden fade-in">
+                     <label for="video-duration" class="font-semibold text-gray-300 mb-2 block">Video Duration (MM:SS)</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-clock absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                        <input type="text" id="video-duration" placeholder="e.g., 12:34" class="w-full pl-12 pr-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200">
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">Auto-detected. Please edit if incorrect.</p>
+                </div>
+                    
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label for="output-language" class="font-semibold text-gray-300 mb-2 block">Output Language</label>
+                        <select id="output-language" class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200">
+                            <!-- Options populated by JavaScript -->
+                        </select>
+                    </div>
+                    <div>
+                        <label for="output-format" class="font-semibold text-gray-300 mb-2 block">Output Format</label>
+                        <select id="output-format" class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200">
+                            <option value="srt" selected>SRT (SubRip)</option>
+                            <option value="vtt">WebVTT</option>
+                            <option value="txt">Plain Text</option>
+                        </select>
+                    </div>
+                     <div>
+                        <label for="model-select" class="font-semibold text-gray-300 mb-2 block">Model</label>
+                        <select id="model-select" class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200">
+                            <!-- Options populated by JavaScript -->
+                        </select>
+                    </div>
+                </div>
+                    
+                <div class="space-y-2 pt-4 mt-4 border-t border-gray-700">
+                    <div class="flex items-center">
+                        <input id="use-proxy-checkbox" type="checkbox" class="h-4 w-4 rounded bg-gray-600 border-gray-500 text-blue-500 focus:ring-blue-500">
+                        <label for="use-proxy-checkbox" class="ml-2 text-sm text-gray-400">Use Proxy</label>
+                    </div>
+                    <div id="custom-proxy-container" class="hidden">
+                        <label for="custom-proxy-input" class="block text-sm font-medium text-gray-300">Custom Proxy URL</label>
+                        <input type="url" id="custom-proxy-input" placeholder="https://your-proxy.workers.dev/" class="mt-1 w-full p-2.5 bg-gray-700 border border-gray-600 text-white placeholder-gray-400 text-sm rounded-lg focus:ring-2 focus:ring-blue-500" value="https://middleman.yebekhe.workers.dev">
+                        <p class="text-xs text-gray-500 mt-1">Deploy your own proxy using <a href="https://github.com/yebekhe/middleman" target="_blank" rel="noopener noreferrer" class="underline hover:text-blue-400">Middleman</a>.</p>
+                    </div>
                 </div>
             </div>
 
-            <!-- Video Preview -->
-            <!-- --- FIX START: Updated HTML for video container and overlay --- -->
             <div id="video-preview" class="hidden mt-6 fade-in">
                 <label class="font-semibold text-gray-300 mb-2 block">Video Preview</label>
                 <div id="video-container" class="rounded-lg overflow-hidden border border-gray-700">
@@ -196,7 +242,6 @@
                     </div>
                 </div>
             </div>
-            <!-- --- FIX END --- -->
 
             <!-- Generate Button -->
             <div class="flex gap-3 mt-8">
@@ -210,7 +255,7 @@
                 <button id="cancel-btn" class="bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg px-4 hidden items-center justify-center transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-red-500/50">
                     <i class="fa-solid fa-times"></i>
                 </button>
-                <button id="preview-btn" class="bg-gray-600 text-gray-200 font-semibold px-4 py-3 rounded-lg hover:bg-gray-500 focus:outline-none focus:ring-4 focus:ring-gray-500/50 transition-all duration-200">
+                <button id="preview-btn" class="bg-gray-600 text-gray-200 font-semibold px-4 py-3 rounded-lg hover:bg-gray-500 focus:outline-none focus:ring-4 focus:ring-gray-500/50 transition-all duration-200 disabled:bg-gray-700 disabled:cursor-not-allowed">
                     <i class="fa-solid fa-play w-4"></i>
                 </button>
             </div>
@@ -292,9 +337,6 @@
         const apiKeyInput = document.getElementById('api-key');
         const apiKeyToggleBtn = document.getElementById('api-key-toggle');
         const saveApiKeyCheckbox = document.getElementById('save-api-key');
-        const urlInput = document.getElementById('youtube-url');
-        const durationContainer = document.getElementById('duration-container');
-        const videoDurationInput = document.getElementById('video-duration');
         const outputLanguageSelect = document.getElementById('output-language');
         const outputFormatSelect = document.getElementById('output-format');
         const modelSelect = document.getElementById('model-select');
@@ -321,27 +363,53 @@
         const editBtn = document.getElementById('edit-btn');
         const timestampBtn = document.getElementById('timestamp-btn');
         const apiKeyError = document.getElementById('api-key-error');
-        const urlError = document.getElementById('url-error');
         const videoPreview = document.getElementById('video-preview');
         const timestampModal = document.getElementById('timestamp-modal');
         const offsetSecondsInput = document.getElementById('offset-seconds');
         const scaleFactorInput = document.getElementById('scale-factor');
         const cancelTimestampBtn = document.getElementById('cancel-timestamp');
         const applyTimestampBtn = document.getElementById('apply-timestamp');
-        // --- FIX START: Update DOM references for new structure ---
         const subtitleOverlay = document.getElementById('subtitle-overlay');
         const subtitleText = document.getElementById('subtitle-text');
         const videoContainer = document.getElementById('video-container');
+
+        // --- FIX START: New DOM references for tabs and inputs ---
+        const tabButtons = {
+            youtube: document.getElementById('tab-youtube'),
+            upload: document.getElementById('tab-upload'),
+            url: document.getElementById('tab-url'),
+        };
+        const tabContents = {
+            youtube: document.getElementById('content-youtube'),
+            upload: document.getElementById('content-upload'),
+            url: document.getElementById('content-url'),
+        };
+        const youtubeUrlInput = document.getElementById('youtube-url');
+        const urlError = document.getElementById('url-error');
+        const videoUploadInput = document.getElementById('video-upload');
+        const fileUploadText = document.getElementById('file-upload-text');
+        const directUrlInput = document.getElementById('direct-url');
+        const durationContainer = document.getElementById('duration-container');
+        const videoDurationInput = document.getElementById('video-duration');
         // --- FIX END ---
 
         let finalSubtitleContent = '';
         let abortController = null;
-        let player; // For duration check
+        let player; // For YT duration check
         let isYTAPILoaded = false;
         
         let parsedSubtitles = [];
         let subtitleSyncInterval = null;
         let previewPlayer = null;
+
+        // --- FIX START: State management for inputs ---
+        let currentInputMode = 'youtube'; // 'youtube', 'upload', 'url'
+        let uploadedFile = {
+            base64: null,
+            mimeType: null,
+            name: null,
+        };
+        // --- FIX END ---
 
         const LANGUAGES = [ { value: "auto", text: "Original Video Language" }, { value: "Afrikaans", text: "Afrikaans" }, { value: "Albanian", text: "Albanian" }, { value: "Amharic", text: "Amharic" }, { value: "Arabic", text: "Arabic" }, { value: "Armenian", text: "Armenian" }, { value: "Assamese", text: "Assamese" }, { value: "Aymara", text: "Aymara" }, { value: "Azerbaijani", text: "Azerbaijani" }, { value: "Bambara", text: "Bambara" }, { value: "Basque", text: "Basque" }, { value: "Belarusian", text: "Belarusian" }, { value: "Bengali", text: "Bengali" }, { value: "Bhojpuri", text: "Bhojpuri" }, { value: "Bosnian", text: "Bosnian" }, { value: "Bulgarian", text: "Bulgarian" }, { value: "Catalan", text: "Catalan" }, { value: "Cebuano", text: "Cebuano" }, { value: "Chichewa", text: "Chichewa (Nyanja)" }, { value: "Chinese (Simplified)", text: "Chinese (Simplified)" }, { value: "Chinese (Traditional)", text: "Chinese (Traditional)" }, { value: "Corsican", text: "Corsican" }, { value: "Croatian", text: "Croatian" }, { value: "Czech", text: "Czech" }, { value: "Danish", text: "Danish" }, { value: "Dhivehi", text: "Dhivehi" }, { value: "Dogri", text: "Dogri" }, { value: "Dutch", text: "Dutch" }, { value: "English", text: "English" }, { value: "Esperanto", text: "Esperanto" }, { value: "Estonian", text: "Estonian" }, { value: "Ewe", text: "Ewe" }, { value: "Filipino", text: "Filipino (Tagalog)" }, { value: "Finnish", text: "Finnish" }, { value: "French", text: "French" }, { value: "Frisian", text: "Frisian" }, { value: "Galician", text: "Galician" }, { value: "Georgian", text: "Georgian" }, { value: "German", text: "German" }, { value: "Greek", text: "Greek" }, { value: "Guarani", text: "Guarani" }, { value: "Gujarati", text: "Gujarati" }, { value: "Haitian Creole", text: "Haitian Creole" }, { value: "Hausa", text: "Hausa" }, { value: "Hawaiian", text: "Hawaiian" }, { value: "Hebrew", text: "Hebrew" }, { value: "Hindi", text: "Hindi" }, { value: "Hmong", text: "Hmong" }, { value: "Hungarian", text: "Hungarian" }, { value: "Icelandic", text: "Icelandic" }, { value: "Igbo", text: "Igbo" }, { value: "Ilocano", text: "Ilocano" }, { value: "Indonesian", text: "Indonesian" }, { value: "Irish", text: "Irish" }, { value: "Italian", text: "Italian" }, { value: "Japanese", text: "Japanese" }, { value: "Javanese", text: "Javanese" }, { value: "Kannada", text: "Kannada" }, { value: "Kazakh", text: "Kazakh" }, { value: "Khmer", text: "Khmer" }, { value: "Kinyarwanda", text: "Kinyarwanda" }, { value: "Konkani", text: "Konkani" }, { value: "Korean", text: "Korean" }, { value: "Krio", text: "Krio" }, { value: "Kurdish (Kurmanji)", text: "Kurdish (Kurmanji)" }, { value: "Kurdish (Sorani)", text: "Kurdish (Sorani)" }, { value: "Kyrgyz", text: "Kyrgyz" }, { value: "Lao", text: "Lao" }, { value: "Latin", text: "Latin" }, { value: "Latvian", text: "Latvian" }, { value: "Lingala", text: "Lingala" }, { value: "Lithuanian", text: "Lithuanian" }, { value: "Luganda", text: "Luganda" }, { value: "Luxembourgish", text: "Luxembourgish" }, { value: "Macedonian", text: "Macedonian" }, { value: "Maithili", text: "Maithili" }, { value: "Malagasy", text: "Malagasy" }, { value: "Malay", text: "Malay" }, { value: "Malayalam", text: "Malayalam" }, { value: "Maltese", text: "Maltese" }, { value: "Maori", text: "Maori" }, { value: "Marathi", text: "Marathi" }, { value: "Meiteilon (Manipuri)", text: "Meiteilon (Manipuri)" }, { value: "Mizo", text: "Mizo" }, { value: "Mongolian", text: "Mongolian" }, { value: "Myanmar (Burmese)", text: "Myanmar (Burmese)" }, { value: "Nepali", text: "Nepali" }, { value: "Norwegian", text: "Norwegian" }, { value: "Odia (Oriya)", text: "Odia (Oriya)" }, { value: "Oromo", text: "Oromo" }, { value: "Pashto", text: "Pashto" }, { value: "Persian", text: "Persian (Farsi)" }, { value: "Polish", text: "Polish" }, { value: "Portuguese", text: "Portuguese" }, { value: "Punjabi", text: "Punjabi" }, { value: "Quechua", text: "Quechua" }, { value: "Romanian", text: "Romanian" }, { value: "Russian", text: "Russian" }, { value: "Samoan", text: "Samoan" }, { value: "Sanskrit", text: "Sanskrit" }, { value: "Scots Gaelic", text: "Scots Gaelic" }, { value: "Sepedi", text: "Sepedi" }, { value: "Serbian", text: "Serbian" }, { value: "Sesotho", text: "Sesotho" }, { value: "Shona", text: "Shona" }, { value: "Sindhi", text: "Sindhi" }, { value: "Sinhala", text: "Sinhala" }, { value: "Slovak", text: "Slovak" }, { value: "Slovenian", text: "Slovenian" }, { value: "Somali", text: "Somali" }, { value: "Spanish", text: "Spanish" }, { value: "Sundanese", text: "Sundanese" }, { value: "Swahili", text: "Swahili" }, { value: "Swedish", text: "Swedish" }, { value: "Tajik", text: "Tajik" }, { value: "Tamil", text: "Tamil" }, { value: "Tatar", text: "Tatar" }, { value: "Telugu", text: "Telugu" }, { value: "Thai", text: "Thai" }, { value: "Tigrinya", text: "Tigrinya" }, { value: "Tsonga", text: "Tsonga" }, { value: "Turkish", text: "Turkish" }, { value: "Turkmen", text: "Turkmen" }, { value: "Twi", text: "Twi (Akan)" }, { value: "Ukrainian", text: "Ukrainian" }, { value: "Urdu", text: "Urdu" }, { value: "Uyghur", text: "Uyghur" }, { value: "Uzbek", text: "Uzbek" }, { value: "Vietnamese", text: "Vietnamese" }, { value: "Welsh", text: "Welsh" }, { value: "Xhosa", text: "Xhosa" }, { value: "Yiddish", text: "Yiddish" }, { value: "Yoruba", text: "Yoruba" }, { value: "Zulu", text: "Zulu" }];
         const MODELS = ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash', 'gemini-2.0-flash-lite'];
@@ -397,9 +465,6 @@
             cancelTimestampBtn.addEventListener('click', () => timestampModal.classList.add('hidden'));
             applyTimestampBtn.addEventListener('click', adjustTimestamps);
             
-            urlInput.addEventListener('input', validateYouTubeUrl);
-            urlInput.addEventListener('change', handleUrlInputChange);
-            
             apiKeyInput.addEventListener('input', () => {
                 if (apiKeyInput.value.trim()) apiKeyError.classList.add('hidden');
             });
@@ -407,9 +472,39 @@
             useProxyCheckbox.addEventListener('change', () => {
                 customProxyContainer.classList.toggle('hidden', !useProxyCheckbox.checked);
             });
+
+            // --- FIX START: New event listeners for tabs and inputs ---
+            Object.keys(tabButtons).forEach(key => {
+                tabButtons[key].addEventListener('click', () => switchTab(key));
+            });
+
+            youtubeUrlInput.addEventListener('input', validateYouTubeUrl);
+            youtubeUrlInput.addEventListener('change', handleUrlInputChange);
+            videoUploadInput.addEventListener('change', handleFileUpload);
+            directUrlInput.addEventListener('change', handleDirectUrlChange);
+            // --- FIX END ---
         }
 
-        // --- API Key Management ---
+        // --- FIX START: Tab switching logic ---
+        function switchTab(mode) {
+            currentInputMode = mode;
+            
+            Object.keys(tabButtons).forEach(key => {
+                tabButtons[key].classList.toggle('active', key === mode);
+                tabContents[key].classList.toggle('active', key === mode);
+            });
+            
+            // Preview is only for YouTube
+            previewBtn.disabled = mode !== 'youtube';
+            destroyPreviewPlayer(); // Clean up player when switching away from YT tab
+            durationContainer.classList.add('hidden'); // Hide duration on switch
+            
+            // Trigger change event to re-validate/process new active input
+            if(mode === 'youtube' && youtubeUrlInput.value) handleUrlInputChange();
+            if(mode === 'url' && directUrlInput.value) handleDirectUrlChange();
+        }
+        // --- FIX END ---
+        
         function toggleApiKeyVisibility() {
             const isPassword = apiKeyInput.type === 'password';
             apiKeyInput.type = isPassword ? 'text' : 'password';
@@ -435,12 +530,11 @@
             }
         }
         
-        // --- YouTube & Video Handling ---
         function validateYouTubeUrl() {
-            const url = urlInput.value.trim();
+            const url = youtubeUrlInput.value.trim();
             const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com\/(watch\?v=|embed\/)|youtu\.be\/)[\w-]{11}/;
             const isValid = url && youtubeRegex.test(url);
-            urlError.classList.toggle('hidden', isValid);
+            urlError.classList.toggle('hidden', isValid || !url);
             return isValid;
         }
         
@@ -449,7 +543,33 @@
             const remainingSeconds = Math.floor(seconds % 60);
             return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
         }
-
+        
+        // --- FIX START: Generic duration handler for all video types ---
+        function getVideoDuration(source) {
+            const video = document.createElement('video');
+            video.preload = 'metadata';
+            
+            video.onloadedmetadata = () => {
+                window.URL.revokeObjectURL(video.src);
+                if (video.duration && isFinite(video.duration)) {
+                    videoDurationInput.value = formatDuration(video.duration);
+                    durationContainer.classList.remove('hidden');
+                }
+            };
+            
+            video.onerror = () => {
+                window.URL.revokeObjectURL(video.src);
+                showStatus('Could not get video duration. The file might be corrupt or the URL inaccessible.', 'warning');
+            };
+            
+            if (source instanceof File) {
+                video.src = URL.createObjectURL(source);
+            } else {
+                video.src = source;
+            }
+        }
+        // --- FIX END ---
+        
         function getYouTubeVideoDuration(videoId) {
             if (!isYTAPILoaded) { setTimeout(() => getYouTubeVideoDuration(videoId), 500); return; }
             if (player) { player.destroy(); player = null; }
@@ -462,14 +582,11 @@
                         if (duration > 0) {
                             videoDurationInput.value = formatDuration(duration);
                             durationContainer.classList.remove('hidden');
-                        } else {
-                            showStatus('Could not get video duration. It might be a live stream.', 'warning');
                         }
                         event.target.destroy(); player = null;
                     },
                     'onError': () => {
-                        showStatus('Could not fetch video details. Check the URL.', 'error');
-                        durationContainer.classList.add('hidden');
+                        showStatus('Could not fetch video details.', 'error');
                         if (player) { player.destroy(); player = null; }
                     }
                 }
@@ -477,7 +594,7 @@
         }
         
         function handleUrlInputChange() {
-            const url = urlInput.value.trim();
+            const url = youtubeUrlInput.value.trim();
             if (validateYouTubeUrl()) {
                 const youtubeRegex = /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]{11})/;
                 const match = url.match(youtubeRegex);
@@ -489,9 +606,54 @@
                  durationContainer.classList.add('hidden');
             }
         }
+
+        // --- FIX START: New handlers for upload and direct URL ---
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Clear other inputs
+            youtubeUrlInput.value = '';
+            directUrlInput.value = '';
+
+            uploadedFile.name = file.name;
+            uploadedFile.mimeType = file.type;
+            fileUploadText.textContent = file.name;
+            fileUploadText.classList.remove('text-gray-400');
+            fileUploadText.classList.add('text-white');
+            
+            getVideoDuration(file);
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                // Remove the data URL prefix (e.g., "data:video/mp4;base64,")
+                uploadedFile.base64 = e.target.result.split(',')[1];
+            };
+            reader.onerror = () => {
+                showStatus('Error reading the selected file.', 'error');
+                uploadedFile.base64 = null;
+            }
+            reader.readAsDataURL(file);
+        }
+
+        function handleDirectUrlChange() {
+            const url = directUrlInput.value.trim();
+            if (!url) return;
+
+             // Clear other inputs
+            youtubeUrlInput.value = '';
+            videoUploadInput.value = '';
+            fileUploadText.textContent = 'Click to choose a video file';
+            fileUploadText.classList.add('text-gray-400');
+            fileUploadText.classList.remove('text-white');
+            uploadedFile = { base64: null, mimeType: null, name: null };
+
+            getVideoDuration(url);
+        }
+        // --- FIX END ---
         
         function toggleVideoPreview() {
-            const url = urlInput.value.trim();
+            const url = youtubeUrlInput.value.trim();
             if (!validateYouTubeUrl()) {
                 showStatus('Please enter a valid YouTube URL first', 'error');
                 return;
@@ -512,30 +674,16 @@
             }
         }
         
-        // --- FIX START: Update player setup for fullscreen overlay ---
         function setupPreviewPlayer(videoId) {
-            if (previewPlayer) {
-                destroyPreviewPlayer();
-            }
+            if (previewPlayer) { destroyPreviewPlayer(); }
             videoPreview.classList.remove('hidden');
 
             previewPlayer = new YT.Player('video-player-container', {
-                height: '100%',
-                width: '100%',
-                videoId: videoId,
-                playerVars: { 
-                    'playsinline': 1, 
-                    'rel': 0,
-                    'fs': 0, // Disable native fullscreen button to use our custom one
-                    'controls': 1
-                },
-                events: {
-                    'onReady': onPlayerReady,
-                    'onStateChange': onPlayerStateChange
-                }
+                height: '100%', width: '100%', videoId: videoId,
+                playerVars: { 'playsinline': 1, 'rel': 0, 'fs': 1, 'controls': 1 },
+                events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange }
             });
         }
-        // --- FIX END ---
 
         function destroyPreviewPlayer() {
             if (previewPlayer && typeof previewPlayer.destroy === 'function') {
@@ -547,36 +695,26 @@
                 subtitleSyncInterval = null;
             }
             videoPreview.classList.add('hidden');
-            subtitleOverlay.classList.add('hidden');
             subtitleText.innerHTML = '&nbsp;';
         }
-
-        // --- Subtitle Playback Synchronization ---
 
         function timeStringToSeconds(timeString) {
             if (!timeString) return 0;
             const [timePart, msPart] = timeString.split(/[,.]/);
             if (!timePart || !msPart) return 0;
             const timeParts = timePart.split(':').map(Number);
-            
             let seconds = 0;
-            if (timeParts.length === 3) {
-                seconds = timeParts[0] * 3600 + timeParts[1] * 60 + timeParts[2];
-            } else if (timeParts.length === 2) {
-                seconds = timeParts[0] * 60 + timeParts[1];
-            }
-            
+            if (timeParts.length === 3) seconds = timeParts[0] * 3600 + timeParts[1] * 60 + timeParts[2];
+            else if (timeParts.length === 2) seconds = timeParts[0] * 60 + timeParts[1];
             return seconds + (parseInt(msPart, 10) / 1000);
         }
 
         function parseSubtitlesForPlayback(content) {
             const format = outputFormatSelect.value;
             if (format === 'txt' || !content) return [];
-            
             const lines = content.trim().split(/\r?\n/);
             const subtitles = [];
             const startIndex = lines[0].toUpperCase().startsWith('WEBVTT') ? 1 : 0;
-
             for (let i = startIndex; i < lines.length; i++) {
                 if (lines[i] && lines[i].includes('-->')) {
                     const [startStr, endStr] = lines[i].split(' --> ');
@@ -600,26 +738,14 @@
         function updateSubtitles(currentTime) {
             if (!parsedSubtitles || parsedSubtitles.length === 0) return;
             const currentSubtitle = parsedSubtitles.find(sub => currentTime >= sub.start && currentTime <= sub.end);
-            
-            let newHtml;
-            if (currentSubtitle && currentSubtitle.text) {
-                newHtml = currentSubtitle.text.split('<br>')
-                    .map(line => `<div dir="auto"><span class="subtitle-line">${line}</span></div>`)
-                    .join('');
-            } else {
-                newHtml = '&nbsp;';
-            }
-
-            if (subtitleText.innerHTML !== newHtml) {
-                subtitleText.innerHTML = newHtml;
-            }
+            let newHtml = currentSubtitle && currentSubtitle.text
+                ? currentSubtitle.text.split('<br>').map(line => `<div dir="auto"><span class="subtitle-line">${line}</span></div>`).join('')
+                : '&nbsp;';
+            if (subtitleText.innerHTML !== newHtml) subtitleText.innerHTML = newHtml;
         }
         
         function onPlayerReady(event) {
-            if (parsedSubtitles.length > 0) {
-                subtitleOverlay.classList.remove('hidden');
-            }
-            
+            if (parsedSubtitles.length > 0) subtitleOverlay.classList.remove('hidden');
             const selectedLanguage = outputLanguageSelect.options[outputLanguageSelect.selectedIndex].text;
             if (RTL_LANGUAGES.has(selectedLanguage)) {
                 subtitleOverlay.classList.add('text-right');
@@ -643,27 +769,18 @@
                     clearInterval(subtitleSyncInterval);
                     subtitleSyncInterval = null;
                 }
-                if (event.data !== YT.PlayerState.PAUSED) {
-                    subtitleText.innerHTML = '&nbsp;';
-                }
+                if (event.data !== YT.PlayerState.PAUSED) subtitleText.innerHTML = '&nbsp;';
             }
         }
 
-        // --- Subtitle Editing & Formatting ---
         function toggleEditMode() {
             const isReadOnly = subtitleOutput.readOnly;
             subtitleOutput.readOnly = !isReadOnly;
             subtitleOutput.classList.toggle('bg-gray-900', isReadOnly);
             subtitleOutput.classList.toggle('bg-gray-700', !isReadOnly);
             editBtn.innerHTML = `<i class="fa-solid ${!isReadOnly ? 'fa-edit' : 'fa-save'}"></i> ${!isReadOnly ? 'Edit' : 'Save'}`;
-            editBtn.classList.toggle('bg-gray-600', !isReadOnly);
-            editBtn.classList.toggle('text-gray-200', !isReadOnly);
-            editBtn.classList.toggle('bg-blue-600', isReadOnly);
-            editBtn.classList.toggle('text-white', isReadOnly);
-
-            if (isReadOnly) { // Was readonly, now editable
-                subtitleOutput.focus();
-            } else { // Was editable, now readonly
+            if (!isReadOnly) subtitleOutput.focus();
+            else {
                 finalSubtitleContent = subtitleOutput.value;
                 parsedSubtitles = parseSubtitlesForPlayback(finalSubtitleContent);
                 showStatus('Subtitles updated locally', 'success');
@@ -696,9 +813,7 @@
             const [h, m, s] = time.split(':').map(Number);
             let totalMs = (h * 3600 + m * 60 + s) * 1000 + parseInt(ms);
             totalMs = Math.max(0, Math.round((totalMs * scale) + (offset * 1000)));
-            const newH = Math.floor(totalMs / 3600000);
-            const newM = Math.floor((totalMs % 3600000) / 60000);
-            const newS = Math.floor((totalMs % 60000) / 1000);
+            const newH = Math.floor(totalMs / 3600000), newM = Math.floor((totalMs % 3600000) / 60000), newS = Math.floor((totalMs % 60000) / 1000);
             return `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}:${String(newS).padStart(2, '0')}${sep}${String(totalMs % 1000).padStart(3, '0')}`;
         }
         
@@ -707,10 +822,7 @@
             if (!ts || typeof ts !== 'string') return `00:00:00${sep}000`;
             const parts = ts.split(/[:.,]/).map(p => parseInt(p, 10) || 0);
             let h = 0, m = 0, s = 0, ms = 0;
-            if (parts.length === 4) [h, m, s, ms] = parts;
-            else if (parts.length === 3) [m, s, ms] = parts;
-            else if (parts.length === 2) [m, s] = parts;
-            
+            if (parts.length === 4) [h, m, s, ms] = parts; else if (parts.length === 3) [m, s, ms] = parts; else if (parts.length === 2) [m, s] = parts;
             let totalMs = h * 3600000 + m * 60000 + s * 1000 + ms;
             const newH = Math.floor(totalMs / 3600000); totalMs %= 3600000;
             const newM = Math.floor(totalMs / 60000); totalMs %= 60000;
@@ -724,11 +836,9 @@
             const timeToMs = (ts) => {
                 if (!ts) return 0;
                 const sep = ts.includes(',') ? ',' : '.';
-                const [time, msStr] = ts.split(sep);
-                const [h, m, s] = time.split(':').map(Number);
+                const [time, msStr] = ts.split(sep); const [h, m, s] = time.split(':').map(Number);
                 return (h * 3600 + m * 60 + s) * 1000 + Number(msStr);
             };
-
             return data.filter(item => {
                 if (!item || typeof item.text !== 'string' || !item.startTime || !item.endTime) return false;
                 const startTimeMs = timeToMs(normalizeTimestamp(item.startTime));
@@ -749,14 +859,33 @@
             }
         }
 
-        // --- Main Generation Logic ---
+        // --- FIX START: Major update to handle multiple input sources ---
         async function handleGeneration() {
             const apiKey = apiKeyInput.value.trim();
-            const youtubeUrl = urlInput.value.trim();
             if (!apiKey) { showStatus('Please provide your Gemini API Key.', 'error'); apiKeyError.classList.remove('hidden'); return; }
-            if (!validateYouTubeUrl()) { showStatus('Please enter a valid YouTube URL.', 'error'); return; }
-            
             saveApiKey();
+            
+            let videoPart = null;
+
+            if (currentInputMode === 'youtube') {
+                const url = youtubeUrlInput.value.trim();
+                if (!validateYouTubeUrl()) { showStatus('Please enter a valid YouTube URL.', 'error'); return; }
+                videoPart = { "fileData": { "mimeType": "video/mp4", "fileUri": url } };
+            } else if (currentInputMode === 'upload') {
+                if (!uploadedFile.base64 || !uploadedFile.mimeType) { showStatus('Please select a file to upload first.', 'error'); return; }
+                videoPart = { "inlineData": { "mimeType": uploadedFile.mimeType, "data": uploadedFile.base64 } };
+            } else if (currentInputMode === 'url') {
+                const url = directUrlInput.value.trim();
+                if (!url) { showStatus('Please enter a direct video URL.', 'error'); return; }
+                // We guess the MIME type for direct URLs, as we can't know it for sure on the client side.
+                videoPart = { "fileData": { "mimeType": "video/mp4", "fileUri": url } };
+            }
+
+            if (!videoPart) {
+                showStatus('No valid video source selected.', 'error');
+                return;
+            }
+
             abortController = new AbortController();
             resetUI();
             toggleLoading(true);
@@ -769,25 +898,23 @@
             
             if (useProxy && !customProxyUrl) {
                 toggleLoading(false);
-                showStatus('Please enter a Custom Proxy URL when "Use Proxy" is enabled.', 'error');
+                showStatus('Please enter a Custom Proxy URL.', 'error');
                 return;
             }
             
             const directApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:streamGenerateContent?alt=sse&key=${apiKey}`;
             const API_URL = useProxy ? customProxyUrl : directApiUrl;
 
-            const Type = { STRING: 'STRING', ARRAY: 'ARRAY', OBJECT: 'OBJECT' };
             const responseSchema = {
-                type: Type.ARRAY, items: { type: Type.OBJECT,
-                    properties: { startTime: { type: Type.STRING }, endTime: { type: Type.STRING }, text: { type: Type.STRING } },
+                type: 'ARRAY', items: { type: 'OBJECT',
+                    properties: { startTime: { type: 'STRING' }, endTime: { type: 'STRING' }, text: { type: 'STRING' } },
                     required: ["startTime", "endTime", "text"]
                 }
             };
             
             const targetLanguage = outputLanguageSelect.value;
             const duration = videoDurationInput.value.trim();
-            let langInstruction;
-            let finalOutputInstruction;
+            let langInstruction, finalOutputInstruction;
             
             if (targetLanguage === 'auto') {
                 langInstruction = 'Your task is to transcribe the video in its original language.';
@@ -798,26 +925,10 @@
             }
             
             const durationInstruction = duration ? `The video duration is ${duration}. Timestamps must not exceed this.` : '';
-            
-            const promptText = `You are an expert transcriptionist. Your main task is: ${langInstruction}
-${durationInstruction}
-Create a precise, time-stamped transcript.
-Strict rules:
-NO REPETITION: Each text segment must be unique and sequential.
-SHORT SEGMENTS: Keep text segments concise, under 45 characters.
-SEQUENTIAL TIMESTAMPS: Timestamps must be strictly increasing.
-ACCURATE JSON: Output a single, valid JSON array of objects matching the schema. ${finalOutputInstruction} No extra text or markdown.
-As a highly skilled AI transcription expert specializing in video subtitle generation, your task is to analyze the attached video file thoroughly and generate a complete, accurate subtitle transcription in JSON format. Follow these precise instructions:
-Full Transcription: Transcribe every spoken word, dialogue, narration, and any audible sounds (e.g., laughter, pauses, background noises if relevant to context) verbatim. Do not paraphrase, summarize, or omit any details—ensure 100% fidelity to the audio content.
-Timestamps: Include precise timestamps for every subtitle segment. Use the format [HH:MM:SS.mmm] for start and end times (where mmm represents milliseconds for sub-second accuracy). Each subtitle line should appear on screen for a readable duration (typically 3-7 seconds), but align exactly with the spoken content to avoid overlaps or gaps.
-Segmentation: Break the transcription into logical subtitle segments based on natural speech pauses, sentences, or phrases. Aim for 1-2 lines per subtitle (maximum 42 characters per line) to ensure readability. If the video has multiple speakers, label them clearly (e.g., [Speaker 1]: Dialogue).
-Language and Accuracy: Correct any minor audio ambiguities through context, but note uncertainties if they arise (e.g., [inaudible]). Handle accents, slang, or technical terms with precision.
-JSON Format: Output the subtitles strictly as a JSON array of objects, where each object follows this schema: [ { "start": "HH:MM:SS.mmm", "end": "HH:MM:SS.mmm", "text": "Subtitle text line 1\nSubtitle text line 2 (if needed)" }, ... ] Ensure the output is valid JSON with no additional keys or content.
-Edge Cases: If the video includes music, lyrics, on-screen text, or non-verbal elements (e.g., [applause]), include them in the subtitles where appropriate. Ensure the entire video duration is covered from start to end.
-Negative Prompt (Strictly Avoid These): Do not introduce any repetitions in text segments; avoid long or verbose segments exceeding 80 characters; prevent any non-sequential or overlapping timestamps; refrain from outputting invalid JSON structures, extra markdown, commentary, or non-schema elements; ignore paraphrasing or summarization—stick to verbatim transcription; do not omit details or fabricate content; avoid mislabeling speakers or ignoring audible elements; prevent gaps in coverage or inaccurate timings; do not add translations unless explicitly requested.`;
+            const promptText = `You are an expert transcriptionist. Your main task is: ${langInstruction} ${durationInstruction} Create a precise, time-stamped transcript. Strict rules: NO REPETITION. SHORT SEGMENTS under 45 characters. SEQUENTIAL TIMESTAMPS. ACCURATE JSON: Output a single, valid JSON array of objects matching the schema. ${finalOutputInstruction} No extra text or markdown. Ensure 100% fidelity to the audio content, breaking transcription into logical subtitle segments. Use HH:MM:SS.mmm format for timestamps. Handle multiple speakers and background sounds where relevant. The entire video duration must be covered.`;
             
             const baseRequestBody = {
-                contents: [{"role": "user", "parts": [{"fileData": {"mimeType": "video/mp4", "fileUri": youtubeUrl}}, {"text": promptText}]}],
+                contents: [{"role": "user", "parts": [videoPart, {"text": promptText}]}],
                 generationConfig: { "responseMimeType": "application/json", "responseSchema": responseSchema }
             };
 
@@ -844,27 +955,20 @@ Negative Prompt (Strictly Avoid These): Do not introduce any repetitions in text
                 while (true) {
                     const { done, value } = await reader.read();
                     if (done) break;
-
                     buffer += decoder.decode(value, { stream: true });
-                    
                     let lineEndIndex;
                     while ((lineEndIndex = buffer.indexOf('\n')) >= 0) {
                         const line = buffer.substring(0, lineEndIndex).trim();
                         buffer = buffer.substring(lineEndIndex + 1);
-
                         if (line.startsWith('data: ')) {
                             try {
                                 const jsonText = line.substring(5).trim();
                                 if (jsonText) {
                                     const jsonChunk = JSON.parse(jsonText);
                                     const textPart = jsonChunk?.candidates?.[0]?.content?.parts?.[0]?.text;
-                                    if (textPart) {
-                                        finalSubtitleJsonString += textPart;
-                                    }
+                                    if (textPart) finalSubtitleJsonString += textPart;
                                 }
-                            } catch (e) {
-                                console.warn("Skipping invalid JSON chunk in stream line:", line, e);
-                            }
+                            } catch (e) { console.warn("Skipping invalid JSON chunk:", line, e); }
                         }
                     }
                     const progress = Math.min(90, 20 + (finalSubtitleJsonString.length / 500));
@@ -879,7 +983,7 @@ Negative Prompt (Strictly Avoid These): Do not introduce any repetitions in text
                     subtitleOutput.value = finalSubtitleContent;
 
                     parsedSubtitles = parseSubtitlesForPlayback(finalSubtitleContent);
-                    if (!videoPreview.classList.contains('hidden') && parsedSubtitles.length > 0) {
+                    if (currentInputMode === 'youtube' && !videoPreview.classList.contains('hidden') && parsedSubtitles.length > 0) {
                         subtitleOverlay.classList.remove('hidden');
                     }
                     
@@ -900,8 +1004,8 @@ Negative Prompt (Strictly Avoid These): Do not introduce any repetitions in text
                 abortController = null;
             }
         }
+        // --- FIX END ---
         
-        // --- UI Helper Functions ---
         function showProgress(percentage, status) {
             progressContainer.classList.remove('hidden');
             progressBar.style.width = `${percentage}%`;
@@ -937,7 +1041,6 @@ Negative Prompt (Strictly Avoid These): Do not introduce any repetitions in text
             finalSubtitleContent = '';
             retryBtn.classList.add('hidden');
             if (!subtitleOutput.readOnly) toggleEditMode();
-            
             parsedSubtitles = [];
             if (previewPlayer) {
                subtitleOverlay.classList.add('hidden');
@@ -961,8 +1064,13 @@ Negative Prompt (Strictly Avoid These): Do not introduce any repetitions in text
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            const videoId = urlInput.value.trim().match(/(?:v=|be\/|embed\/)([\w-]{11})/)?.[1] || 'subtitles';
-            a.download = `subtitles_${videoId}.${format}`;
+            let fileName = 'subtitles';
+            if (currentInputMode === 'youtube') {
+                fileName = youtubeUrlInput.value.trim().match(/(?:v=|be\/|embed\/)([\w-]{11})/)?.[1] || 'subtitles';
+            } else if (currentInputMode === 'upload' && uploadedFile.name) {
+                fileName = uploadedFile.name.split('.').slice(0, -1).join('.') || 'subtitles';
+            }
+            a.download = `subtitles_${fileName}.${format}`;
             a.click();
             URL.revokeObjectURL(url);
         }
