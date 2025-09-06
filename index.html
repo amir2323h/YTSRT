@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -722,21 +721,29 @@
             const targetLanguage = outputLanguageSelect.value;
             const duration = videoDurationInput.value.trim();
             let langInstruction;
-
+            let finalOutputInstruction;
+            
+            // --- FIX START ---
+            // This section has been modified to create a more explicit and forceful prompt
+            // to ensure the AI performs the translation correctly.
             if (targetLanguage === 'auto') {
-                langInstruction = 'Transcribe the video in its original language.';
+                langInstruction = 'Your task is to transcribe the video in its original language.';
+                finalOutputInstruction = `The 'text' field must contain the final transcribed text.`;
             } else {
-                langInstruction = `Transcribe the video's audio into ${targetLanguage}.`;
+                langInstruction = `CRITICAL: Your primary task is to TRANSLATE the video's audio into ${targetLanguage} and generate subtitles. The final output MUST be in ${targetLanguage}.`;
+                finalOutputInstruction = `The 'text' field must contain the final TRANSLATED text in ${targetLanguage}.`;
             }
             
             const durationInstruction = duration ? `The video duration is ${duration}. Timestamps must not exceed this.` : '';
             
-            const promptText = `You are an expert transcriptionist tasked with: ${langInstruction} ${durationInstruction} Create a precise, time-stamped transcript.
+            const promptText = `You are an expert transcriptionist. Your main task is: ${langInstruction}
+${durationInstruction}
+Create a precise, time-stamped transcript.
 Strict rules:
 NO REPETITION: Each text segment must be unique and sequential.
 SHORT SEGMENTS: Keep text segments concise, under 45 characters.
 SEQUENTIAL TIMESTAMPS: Timestamps must be strictly increasing.
-ACCURATE JSON: Output a single, valid JSON array of objects matching the schema. The 'text' field must contain the final (translated, if requested) text. No extra text or markdown.
+ACCURATE JSON: Output a single, valid JSON array of objects matching the schema. ${finalOutputInstruction} No extra text or markdown.
 As a highly skilled AI transcription expert specializing in video subtitle generation, your task is to analyze the attached video file thoroughly and generate a complete, accurate subtitle transcription in JSON format. Follow these precise instructions:
 Full Transcription: Transcribe every spoken word, dialogue, narration, and any audible sounds (e.g., laughter, pauses, background noises if relevant to context) verbatim. Do not paraphrase, summarize, or omit any details—ensure 100% fidelity to the audio content.
 Timestamps: Include precise timestamps for every subtitle segment. Use the format [HH:MM:SS.mmm] for start and end times (where mmm represents milliseconds for sub-second accuracy). Each subtitle line should appear on screen for a readable duration (typically 3-7 seconds), but align exactly with the spoken content to avoid overlaps or gaps.
@@ -745,6 +752,7 @@ Language and Accuracy: Correct any minor audio ambiguities through context, but 
 JSON Format: Output the subtitles strictly as a JSON array of objects, where each object follows this schema: [ { "start": "HH:MM:SS.mmm", "end": "HH:MM:SS.mmm", "text": "Subtitle text line 1\nSubtitle text line 2 (if needed)" }, ... ] Ensure the output is valid JSON with no additional keys or content.
 Edge Cases: If the video includes music, lyrics, on-screen text, or non-verbal elements (e.g., [applause]), include them in the subtitles where appropriate. Ensure the entire video duration is covered from start to end.
 Negative Prompt (Strictly Avoid These): Do not introduce any repetitions in text segments; avoid long or verbose segments exceeding 80 characters; prevent any non-sequential or overlapping timestamps; refrain from outputting invalid JSON structures, extra markdown, commentary, or non-schema elements; ignore paraphrasing or summarization—stick to verbatim transcription; do not omit details or fabricate content; avoid mislabeling speakers or ignoring audible elements; prevent gaps in coverage or inaccurate timings; do not add translations unless explicitly requested.`;
+            // --- FIX END ---
             
             const baseRequestBody = {
                 contents: [{"role": "user", "parts": [{"fileData": {"mimeType": "video/mp4", "fileUri": youtubeUrl}}, {"text": promptText}]}],
