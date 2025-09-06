@@ -726,7 +726,7 @@
             if (targetLanguage === 'auto') {
                 langInstruction = 'Transcribe the video in its original language.';
             } else {
-                langInstruction = `Transcribe the video's audio, then translate the transcription into ${targetLanguage}.`;
+                langInstruction = `Transcribe the video's audio into ${targetLanguage}.`;
             }
             
             const durationInstruction = duration ? `The video duration is ${duration}. Timestamps must not exceed this.` : '';
