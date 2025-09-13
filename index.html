@@ -121,7 +121,6 @@
             </div>
             
             <div class="space-y-6">
-                <!-- API Key Section -->
                 <div>
                     <label for="api-key" class="font-semibold text-gray-300 mb-2 block">Google Gemini API Key</label>
                     <div class="relative">
@@ -167,7 +166,7 @@
                                 <i class="fa-solid fa-upload mr-3 text-gray-400"></i>
                                 <span id="file-upload-text" class="text-gray-400">Click to choose a video file</span>
                             </label>
-                            <input type="file" id="video-upload" accept="video/*" class="hidden">
+                            <input type="file" id="video-upload" accept="video/mp4,video/webm,video/mov,video/avi" class="hidden">
                              <p class="text-xs text-gray-500 mt-1">For best results, use files under 20MB.</p>
                         </div>
                     </div>
@@ -196,8 +195,7 @@
                     <div>
                         <label for="output-language" class="font-semibold text-gray-300 mb-2 block">Output Language</label>
                         <select id="output-language" class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200">
-                            <!-- Options populated by JavaScript -->
-                        </select>
+                            </select>
                     </div>
                     <div>
                         <label for="output-format" class="font-semibold text-gray-300 mb-2 block">Output Format</label>
@@ -210,8 +208,7 @@
                      <div>
                         <label for="model-select" class="font-semibold text-gray-300 mb-2 block">Model</label>
                         <select id="model-select" class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200">
-                            <!-- Options populated by JavaScript -->
-                        </select>
+                            </select>
                     </div>
                 </div>
                     
@@ -230,7 +227,6 @@
 
             <div id="video-preview" class="hidden mt-6 fade-in">
                 <label class="font-semibold text-gray-300 mb-2 block">Video Preview</label>
-                <!-- --- FIX START: Add HTML5 video player --- -->
                 <div id="video-container" class="rounded-lg overflow-hidden border border-gray-700">
                     <div id="video-player-container"></div>
                     <video id="local-video-player" class="hidden" controls></video>
@@ -238,7 +234,6 @@
                         <p id="subtitle-text">&nbsp;</p>
                     </div>
                 </div>
-                <!-- --- FIX END --- -->
             </div>
 
             <div class="flex gap-3 mt-8">
@@ -378,10 +373,8 @@
         const directUrlInput = document.getElementById('direct-url');
         const durationContainer = document.getElementById('duration-container');
         const videoDurationInput = document.getElementById('video-duration');
-        // --- FIX START: Add reference to the local video player ---
         const localPlayer = document.getElementById('local-video-player');
         const ytPlayerContainer = document.getElementById('video-player-container');
-        // --- FIX END ---
 
         let finalSubtitleContent = '';
         let abortController = null;
@@ -397,7 +390,7 @@
             base64: null,
             mimeType: null,
             name: null,
-            fileObject: null, // --- FIX: Store the actual file object for the player
+            fileObject: null,
         };
 
         const LANGUAGES = [ { value: "auto", text: "Original Video Language" }, { value: "Afrikaans", text: "Afrikaans" }, { value: "Albanian", text: "Albanian" }, { value: "Amharic", text: "Amharic" }, { value: "Arabic", text: "Arabic" }, { value: "Armenian", text: "Armenian" }, { value: "Assamese", text: "Assamese" }, { value: "Aymara", text: "Aymara" }, { value: "Azerbaijani", text: "Azerbaijani" }, { value: "Bambara", text: "Bambara" }, { value: "Basque", text: "Basque" }, { value: "Belarusian", text: "Belarusian" }, { value: "Bengali", text: "Bengali" }, { value: "Bhojpuri", text: "Bhojpuri" }, { value: "Bosnian", text: "Bosnian" }, { value: "Bulgarian", text: "Bulgarian" }, { value: "Catalan", text: "Catalan" }, { value: "Cebuano", text: "Cebuano" }, { value: "Chichewa", text: "Chichewa (Nyanja)" }, { value: "Chinese (Simplified)", text: "Chinese (Simplified)" }, { value: "Chinese (Traditional)", text: "Chinese (Traditional)" }, { value: "Corsican", text: "Corsican" }, { value: "Croatian", text: "Croatian" }, { value: "Czech", text: "Czech" }, { value: "Danish", text: "Danish" }, { value: "Dhivehi", text: "Dhivehi" }, { value: "Dogri", text: "Dogri" }, { value: "Dutch", text: "Dutch" }, { value: "English", text: "English" }, { value: "Esperanto", text: "Esperanto" }, { value: "Estonian", text: "Estonian" }, { value: "Ewe", text: "Ewe" }, { value: "Filipino", text: "Filipino (Tagalog)" }, { value: "Finnish", text: "Finnish" }, { value: "French", text: "French" }, { value: "Frisian", text: "Frisian" }, { value: "Galician", text: "Galician" }, { value: "Georgian", text: "Georgian" }, { value: "German", text: "German" }, { value: "Greek", text: "Greek" }, { value: "Guarani", text: "Guarani" }, { value: "Gujarati", text: "Gujarati" }, { value: "Haitian Creole", text: "Haitian Creole" }, { value: "Hausa", text: "Hausa" }, { value: "Hawaiian", text: "Hawaiian" }, { value: "Hebrew", text: "Hebrew" }, { value: "Hindi", text: "Hindi" }, { value: "Hmong", text: "Hmong" }, { value: "Hungarian", text: "Hungarian" }, { value: "Icelandic", text: "Icelandic" }, { value: "Igbo", text: "Igbo" }, { value: "Ilocano", text: "Ilocano" }, { value: "Indonesian", text: "Indonesian" }, { value: "Irish", text: "Irish" }, { value: "Italian", text: "Italian" }, { value: "Japanese", text: "Japanese" }, { value: "Javanese", text: "Javanese" }, { value: "Kannada", text: "Kannada" }, { value: "Kazakh", text: "Kazakh" }, { value: "Khmer", text: "Khmer" }, { value: "Kinyarwanda", text: "Kinyarwanda" }, { value: "Konkani", text: "Konkani" }, { value: "Korean", text: "Korean" }, { value: "Krio", text: "Krio" }, { value: "Kurdish (Kurmanji)", text: "Kurdish (Kurmanji)" }, { value: "Kurdish (Sorani)", text: "Kurdish (Sorani)" }, { value: "Kyrgyz", text: "Kyrgyz" }, { value: "Lao", text: "Lao" }, { value: "Latin", text: "Latin" }, { value: "Latvian", text: "Latvian" }, { value: "Lingala", text: "Lingala" }, { value: "Lithuanian", text: "Lithuanian" }, { value: "Luganda", text: "Luganda" }, { value: "Luxembourgish", text: "Luxembourgish" }, { value: "Macedonian", text: "Macedonian" }, { value: "Maithili", text: "Maithili" }, { value: "Malagasy", text: "Malagasy" }, { value: "Malay", text: "Malay" }, { value: "Malayalam", text: "Malayalam" }, { value: "Maltese", text: "Maltese" }, { value: "Maori", text: "Maori" }, { value: "Marathi", text: "Marathi" }, { value: "Meiteilon (Manipuri)", text: "Meiteilon (Manipuri)" }, { value: "Mizo", text: "Mizo" }, { value: "Mongolian", text: "Mongolian" }, { value: "Myanmar (Burmese)", text: "Myanmar (Burmese)" }, { value: "Nepali", text: "Nepali" }, { value: "Norwegian", text: "Norwegian" }, { value: "Odia (Oriya)", text: "Odia (Oriya)" }, { value: "Oromo", text: "Oromo" }, { value: "Pashto", text: "Pashto" }, { value: "Persian", text: "Persian (Farsi)" }, { value: "Polish", text: "Polish" }, { value: "Portuguese", text: "Portuguese" }, { value: "Punjabi", text: "Punjabi" }, { value: "Quechua", text: "Quechua" }, { value: "Romanian", text: "Romanian" }, { value: "Russian", text: "Russian" }, { value: "Samoan", text: "Samoan" }, { value: "Sanskrit", text: "Sanskrit" }, { value: "Scots Gaelic", text: "Scots Gaelic" }, { value: "Sepedi", text: "Sepedi" }, { value: "Serbian", text: "Serbian" }, { value: "Sesotho", text: "Sesotho" }, { value: "Shona", text: "Shona" }, { value: "Sindhi", text: "Sindhi" }, { value: "Sinhala", text: "Sinhala" }, { value: "Slovak", text: "Slovak" }, { value: "Slovenian", text: "Slovenian" }, { value: "Somali", text: "Somali" }, { value: "Spanish", text: "Spanish" }, { value: "Sundanese", text: "Sundanese" }, { value: "Swahili", text: "Swahili" }, { value: "Swedish", text: "Swedish" }, { value: "Tajik", text: "Tajik" }, { value: "Tamil", text: "Tamil" }, { value: "Tatar", text: "Tatar" }, { value: "Telugu", text: "Telugu" }, { value: "Thai", text: "Thai" }, { value: "Tigrinya", text: "Tigrinya" }, { value: "Tsonga", text: "Tsonga" }, { value: "Turkish", text: "Turkish" }, { value: "Turkmen", text: "Turkmen" }, { value: "Twi", text: "Twi (Akan)" }, { value: "Ukrainian", text: "Ukrainian" }, { value: "Urdu", text: "Urdu" }, { value: "Uyghur", text: "Uyghur" }, { value: "Uzbek", text: "Uzbek" }, { value: "Vietnamese", text: "Vietnamese" }, { value: "Welsh", text: "Welsh" }, { value: "Xhosa", text: "Xhosa" }, { value: "Yiddish", text: "Yiddish" }, { value: "Yoruba", text: "Yoruba" }, { value: "Zulu", text: "Zulu" }];
@@ -464,11 +457,9 @@
             videoUploadInput.addEventListener('change', handleFileUpload);
             directUrlInput.addEventListener('change', handleDirectUrlChange);
 
-            // --- FIX START: Add event listeners for the local player ---
             localPlayer.addEventListener('timeupdate', () => { updateSubtitles(localPlayer.currentTime); });
             localPlayer.addEventListener('seeked', () => { updateSubtitles(localPlayer.currentTime); });
-            localPlayer.addEventListener('play', onPlayerReady); // Reuse to show overlay
-            // --- FIX END ---
+            localPlayer.addEventListener('play', onPlayerReady);
         }
 
         function switchTab(mode) {
@@ -479,10 +470,8 @@
                 tabContents[key].classList.toggle('active', key === mode);
             });
             
-            // --- FIX START: Enable preview for YouTube and Upload ---
             previewBtn.disabled = !(mode === 'youtube' || mode === 'upload');
             destroyPlayers();
-            // --- FIX END ---
             
             durationContainer.classList.add('hidden');
             
@@ -547,7 +536,7 @@
         }
         
         function getYouTubeVideoDuration(videoId) {
-            if (!isYTAPILoadED) { setTimeout(() => getYouTubeVideoDuration(videoId), 500); return; }
+            if (!isYTAPILoaded) { setTimeout(() => getYouTubeVideoDuration(videoId), 500); return; }
             if (player) { player.destroy(); player = null; }
             player = new YT.Player('player', {
                 height: '0', width: '0', videoId,
@@ -610,7 +599,6 @@
             getVideoDuration(url);
         }
         
-        // --- FIX START: New player management functions ---
         function toggleVideoPreview() {
             if (videoPreview.classList.contains('hidden')) { // SHOW PLAYER
                 if (currentInputMode === 'youtube') {
@@ -672,7 +660,6 @@
             videoPreview.classList.add('hidden');
             subtitleText.innerHTML = '&nbsp;';
         }
-        // --- FIX END ---
         
         function timeStringToSeconds(timeString) {
             if (!timeString) return 0;
@@ -829,8 +816,11 @@
                 if (!validateYouTubeUrl()) { showStatus('Please enter a valid YouTube URL.', 'error'); return; }
                 videoPart = { "fileData": { "mimeType": "video/mp4", "fileUri": url } };
             } else if (currentInputMode === 'upload') {
-                if (!uploadedFile.base64 || !uploadedFile.mimeType) { showStatus('Please select a file to upload first.', 'error'); return; }
-                videoPart = { "inlineData": { "mimeType": uploadedFile.mimeType, "data": uploadedFile.base64 } };
+                if (!uploadedFile.base64) { showStatus('Please select a file to upload first.', 'error'); return; }
+                // === START OF FIX ===
+                // Hardcode the MIME type to 'video/mp4' for better API compatibility, especially for .webm files.
+                videoPart = { "inlineData": { "mimeType": 'video/mp4', "data": uploadedFile.base64 } };
+                // === END OF FIX ===
             } else if (currentInputMode === 'url') {
                 const url = directUrlInput.value.trim();
                 if (!url) { showStatus('Please enter a direct video URL.', 'error'); return; }
